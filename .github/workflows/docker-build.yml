@@ -59,11 +59,9 @@ jobs:
       - name: Make package public
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
-          gh auth setup-git
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-          gh api \
-            --method PUT \
+          curl -X PUT \
             -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /user/packages/container/${{ env.IMAGE_NAME }}/visibility \
-            -f visibility=public
+            https://api.github.com/user/packages/container/${{ env.IMAGE_NAME }}/visibility \
+            -d '{"visibility":"public"}'
