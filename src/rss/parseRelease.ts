@@ -29,6 +29,23 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
     tmdbId = parseInt(tmdbMatch[1], 10);
   }
 
+  // Try to extract size from description (RSS feeds often have size in description)
+  let sizeMb: number | undefined = parsed.sizeMb;
+  if (!sizeMb && description) {
+    // Look for size patterns in description like "Size: 3.16 GiB" or "3.16 GB"
+    const sizeMatch = description.match(/Size[:\s]+(\d+(?:\.\d+)?)\s*(GB|MB|GiB|MiB)/i) ||
+                      description.match(/(\d+(?:\.\d+)?)\s*(GB|MB|GiB|MiB)/i);
+    if (sizeMatch) {
+      const sizeValue = parseFloat(sizeMatch[1]);
+      const unit = sizeMatch[2].toUpperCase();
+      if (unit.includes('GB') || unit.includes('GIB')) {
+        sizeMb = sizeValue * 1024;
+      } else {
+        sizeMb = sizeValue;
+      }
+    }
+  }
+
   // Extract clean movie title (remove quality info, year, etc.)
   // Try to get just the movie name part before the year and quality info
   let cleanTitle = title;
@@ -51,7 +68,7 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
     source_tag: parsed.sourceTag,
     codec: parsed.codec,
     audio: parsed.audio,
-    rss_size_mb: parsed.sizeMb,
+    rss_size_mb: sizeMb || parsed.sizeMb,
     published_at: item.pubDate || new Date().toISOString(),
     audio_languages: parsed.audioLanguages ? JSON.stringify(parsed.audioLanguages) : undefined,
     parsed,
