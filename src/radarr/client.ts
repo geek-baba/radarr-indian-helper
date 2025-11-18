@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
-import { RadarrMovie, RadarrLookupResult, RadarrMovieFile } from './types';
+import { RadarrMovie, RadarrLookupResult, RadarrMovieFile, RadarrHistory } from './types';
 
 class RadarrClient {
   private client: AxiosInstance;
@@ -88,6 +88,32 @@ class RadarrClient {
     } catch (error) {
       console.error('Radarr trigger search error:', error);
       throw error;
+    }
+  }
+
+  async getMovieHistory(movieId: number): Promise<RadarrHistory[]> {
+    try {
+      const response = await this.client.get<RadarrHistory[]>('/history/movie', {
+        params: { movieId },
+      });
+      return response.data || [];
+    } catch (error) {
+      console.error('Radarr get movie history error:', error);
+      return [];
+    }
+  }
+
+  async getMovieWithHistory(movieId: number): Promise<{ movie: RadarrMovie; history: RadarrHistory[] } | null> {
+    try {
+      const movie = await this.client.get<RadarrMovie>(`/movie/${movieId}`);
+      const history = await this.getMovieHistory(movieId);
+      return {
+        movie: movie.data,
+        history,
+      };
+    } catch (error) {
+      console.error('Radarr get movie with history error:', error);
+      return null;
     }
   }
 }

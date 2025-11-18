@@ -24,6 +24,44 @@ export interface RadarrMovieFile {
       source?: string;
     };
   };
+  mediaInfo?: {
+    audioCodec?: string;
+    audioChannels?: number;
+    audioLanguages?: string[];
+    videoCodec?: string;
+    videoBitDepth?: number;
+    resolution?: string;
+  };
+}
+
+export interface RadarrHistory {
+  id: number;
+  movieId: number;
+  sourceTitle: string;
+  quality?: {
+    quality: {
+      id: number;
+      name: string;
+      resolution?: string;
+      source?: string;
+    };
+  };
+  date: string;
+  eventType: string;
+  data?: {
+    indexer?: string;
+    nzbInfoUrl?: string;
+    releaseGroup?: string;
+    age?: number;
+    ageHours?: number;
+    ageMinutes?: number;
+    publishedDate?: string;
+    downloadUrl?: string;
+    guid?: string;
+    protocol?: string;
+    torrentInfoHash?: string;
+    size?: number;
+  };
 }
 
 export interface RadarrLookupResult {

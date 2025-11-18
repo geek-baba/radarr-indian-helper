@@ -76,14 +76,18 @@ export async function fetchAndProcessFeeds(): Promise<void> {
 
           if ((parsed as any).tmdb_id) {
             // Direct lookup by TMDB ID - this is more reliable
+            console.log(`  Looking up movie by TMDB ID: ${(parsed as any).tmdb_id} for: ${parsed.title}`);
             radarrMovie = await radarrClient.getMovie((parsed as any).tmdb_id);
             if (radarrMovie && radarrMovie.id) {
+              console.log(`  Found movie in Radarr by TMDB ID: ${radarrMovie.title} (ID: ${radarrMovie.id})`);
               lookupResult = {
                 tmdbId: radarrMovie.tmdbId,
                 title: radarrMovie.title,
                 year: radarrMovie.year,
                 originalLanguage: radarrMovie.originalLanguage,
               };
+            } else {
+              console.log(`  Movie not found in Radarr by TMDB ID: ${(parsed as any).tmdb_id}`);
             }
           }
 
@@ -132,8 +136,28 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           }
 
           // Movie exists in Radarr - check if upgrade candidate
+          // Get full movie details with history
+          const movieWithHistory = await radarrClient.getMovieWithHistory(radarrMovie.id!);
           const existingFile = radarrMovie.movieFile;
           const existingSizeMb = existingFile ? existingFile.size / (1024 * 1024) : undefined;
+          
+          // Parse existing file attributes
+          let existingParsed: any = null;
+          if (existingFile) {
+            existingParsed = parseReleaseFromTitle(existingFile.relativePath);
+            // Also try to get info from mediaInfo if available
+            if (existingFile.mediaInfo) {
+              if (existingFile.mediaInfo.audioCodec) {
+                existingParsed.audioFromMediaInfo = existingFile.mediaInfo.audioCodec;
+              }
+              if (existingFile.mediaInfo.audioLanguages) {
+                existingParsed.audioLanguagesFromMediaInfo = existingFile.mediaInfo.audioLanguages;
+              }
+              if (existingFile.mediaInfo.videoCodec) {
+                existingParsed.videoCodecFromMediaInfo = existingFile.mediaInfo.videoCodec;
+              }
+            }
+          }
 
           // Determine if dubbed
           const originalLang = lookupResult.originalLanguage?.name || radarrMovie.originalLanguage?.name;
@@ -153,11 +177,7 @@ export async function fetchAndProcessFeeds(): Promise<void> {
 
           // Compute existing score from existing file
           let existingScore = 0;
-          if (existingFile) {
-            // Try to parse existing file name to get quality info
-            const existingFileName = existingFile.relativePath || '';
-            const existingParsed = parseReleaseFromTitle(existingFileName);
-            
+          if (existingFile && existingParsed) {
             // Compute score for existing file using same logic as new releases
             const existingPreferredLanguage = radarrMovie.originalLanguage && 
               settings.preferredAudioLanguages.includes(radarrMovie.originalLanguage.name.toLowerCase().substring(0, 2));
@@ -207,7 +227,20 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             }
           }
 
-          const release: Omit<Release, 'id'> = {
+          // Store existing file attributes and history
+          const existingFileAttributes = existingFile && existingParsed ? {
+            path: existingFile.relativePath,
+            resolution: existingParsed.resolution,
+            codec: existingParsed.codec,
+            sourceTag: existingParsed.sourceTag,
+            audio: existingParsed.audio,
+            audioFromMediaInfo: existingParsed.audioFromMediaInfo,
+            audioLanguages: existingParsed.audioLanguagesFromMediaInfo,
+            videoCodec: existingParsed.videoCodecFromMediaInfo,
+            sizeMb: existingSizeMb,
+          } : null;
+
+          const release: any = {
             ...parsed,
             status,
             tmdb_id: lookupResult.tmdbId,
@@ -219,6 +252,9 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             existing_size_mb: existingSizeMb,
             radarr_existing_quality_score: existingScore,
             new_quality_score: newScore,
+            existing_file_path: existingFile?.relativePath || null,
+            existing_file_attributes: existingFileAttributes ? JSON.stringify(existingFileAttributes) : null,
+            radarr_history: movieWithHistory?.history ? JSON.stringify(movieWithHistory.history.slice(0, 10)) : null, // Store last 10 history items
             last_checked_at: new Date().toISOString(),
           };
 

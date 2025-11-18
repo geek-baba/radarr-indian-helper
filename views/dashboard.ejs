@@ -82,31 +82,126 @@
                     <div class="flex justify-between items-start">
                       <div class="flex-1">
                         <h5 class="text-lg font-semibold"><%= release.title %></h5>
-                        <div class="mt-2 text-sm">
-                          <div class="mb-2">
-                            <span class="font-medium text-gray-700">RSS Release:</span>
-                            <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2 ml-2"><%= release.resolution %></span>
-                            <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2"><%= release.codec %></span>
-                            <span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2"><%= release.source_tag %></span>
-                            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2"><%= release.audio %></span>
+                        
+                        <!-- RSS Release Attributes -->
+                        <div class="mt-3 p-3 bg-white rounded border">
+                          <div class="font-medium text-gray-700 mb-2">RSS Release:</div>
+                          <div class="text-sm space-y-1">
+                            <div>
+                              <span class="font-medium">Resolution:</span>
+                              <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2 ml-2"><%= release.resolution %></span>
+                            </div>
+                            <div>
+                              <span class="font-medium">Codec:</span>
+                              <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2 ml-2"><%= release.codec %></span>
+                            </div>
+                            <div>
+                              <span class="font-medium">Source:</span>
+                              <span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2 ml-2"><%= release.source_tag %></span>
+                            </div>
+                            <div>
+                              <span class="font-medium">Audio:</span>
+                              <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2 ml-2"><%= release.audio %></span>
+                            </div>
                             <% if (release.rss_size_mb) { %>
-                              <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded"><%= release.rss_size_mb.toFixed(2) %> MB</span>
+                              <div>
+                                <span class="font-medium">Size:</span>
+                                <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded mr-2 ml-2"><%= release.rss_size_mb.toFixed(2) %> MB</span>
+                              </div>
+                            <% } %>
+                            <% if (release.audio_languages) { %>
+                              <div>
+                                <span class="font-medium">Languages:</span>
+                                <span class="ml-2 text-gray-600"><%= JSON.parse(release.audio_languages).join(', ') %></span>
+                              </div>
                             <% } %>
                           </div>
-                          <% if (release.audio_languages) { %>
-                            <div class="mb-2">
-                              <span class="font-medium text-gray-700">Languages:</span>
-                              <span class="ml-2 text-gray-600"><%= JSON.parse(release.audio_languages).join(', ') %></span>
+                        </div>
+
+                        <!-- Existing Radarr File Attributes -->
+                        <% if (release.existing_file_attributes) { %>
+                          <% const existingAttrs = JSON.parse(release.existing_file_attributes); %>
+                          <div class="mt-3 p-3 bg-gray-50 rounded border">
+                            <div class="font-medium text-gray-700 mb-2">Existing in Radarr:</div>
+                            <div class="text-sm space-y-1">
+                              <% if (release.radarr_movie_title) { %>
+                                <div><span class="font-medium">Movie:</span> <strong><%= release.radarr_movie_title %></strong></div>
+                              <% } %>
+                              <% if (existingAttrs.path) { %>
+                                <div><span class="font-medium">File:</span> <span class="text-gray-600 font-mono text-xs"><%= existingAttrs.path %></span></div>
+                              <% } %>
+                              <% if (existingAttrs.resolution) { %>
+                                <div>
+                                  <span class="font-medium">Resolution:</span>
+                                  <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.resolution %></span>
+                                </div>
+                              <% } %>
+                              <% if (existingAttrs.codec) { %>
+                                <div>
+                                  <span class="font-medium">Codec:</span>
+                                  <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.codec %></span>
+                                  <% if (existingAttrs.videoCodec) { %>
+                                    <span class="text-gray-600 text-xs">(MediaInfo: <%= existingAttrs.videoCodec %>)</span>
+                                  <% } %>
+                                </div>
+                              <% } %>
+                              <% if (existingAttrs.sourceTag) { %>
+                                <div>
+                                  <span class="font-medium">Source:</span>
+                                  <span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.sourceTag %></span>
+                                </div>
+                              <% } %>
+                              <% if (existingAttrs.audio || existingAttrs.audioFromMediaInfo) { %>
+                                <div>
+                                  <span class="font-medium">Audio:</span>
+                                  <% if (existingAttrs.audio) { %>
+                                    <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.audio %></span>
+                                  <% } %>
+                                  <% if (existingAttrs.audioFromMediaInfo) { %>
+                                    <span class="text-gray-600 text-xs">(MediaInfo: <%= existingAttrs.audioFromMediaInfo %>)</span>
+                                  <% } %>
+                                </div>
+                              <% } %>
+                              <% if (existingAttrs.sizeMb) { %>
+                                <div>
+                                  <span class="font-medium">Size:</span>
+                                  <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.sizeMb.toFixed(2) %> MB</span>
+                                </div>
+                              <% } %>
+                              <% if (existingAttrs.audioLanguages && existingAttrs.audioLanguages.length > 0) { %>
+                                <div>
+                                  <span class="font-medium">Languages:</span>
+                                  <span class="ml-2 text-gray-600"><%= existingAttrs.audioLanguages.join(', ') %></span>
+                                </div>
+                              <% } %>
+                            </div>
+                          </div>
+                        <% } else if (release.existing_size_mb) { %>
+                          <div class="mt-2 text-sm text-gray-600">Existing Size: <%= release.existing_size_mb.toFixed(2) %> MB</div>
+                        <% } %>
+
+                        <!-- Download History -->
+                        <% if (release.radarr_history) { %>
+                          <% const history = JSON.parse(release.radarr_history); %>
+                          <% if (history.length > 0) { %>
+                            <div class="mt-3 p-3 bg-gray-50 rounded border">
+                              <div class="font-medium text-gray-700 mb-2">Download History:</div>
+                              <div class="text-xs space-y-1 max-h-32 overflow-y-auto">
+                                <% history.slice(0, 5).forEach((h: any) => { %>
+                                  <div class="text-gray-600">
+                                    <%= new Date(h.date).toLocaleDateString() %> - 
+                                    <%= h.sourceTitle || h.eventType %>
+                                    <% if (h.data && h.data.releaseGroup) { %>
+                                      (<%= h.data.releaseGroup %>)
+                                    <% } %>
+                                  </div>
+                                <% }); %>
+                              </div>
                             </div>
                           <% } %>
-                        </div>
-                        <% if (release.radarr_movie_title) { %>
-                          <p class="mt-2 text-sm">Radarr: <strong><%= release.radarr_movie_title %></strong></p>
                         <% } %>
-                        <% if (release.existing_size_mb) { %>
-                          <p class="mt-1 text-sm text-gray-600">Existing Size: <%= release.existing_size_mb.toFixed(2) %> MB</p>
-                        <% } %>
-                        <p class="mt-1 text-xs text-gray-500">Published: <%= new Date(release.published_at).toLocaleDateString() %></p>
+
+                        <p class="mt-2 text-xs text-gray-500">Published: <%= new Date(release.published_at).toLocaleDateString() %></p>
                       </div>
                       <div class="ml-4 space-x-2">
                         <button onclick="ignoreRelease(<%= release.id %>)" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm">
@@ -130,45 +225,180 @@
                     <div class="flex justify-between items-start">
                       <div class="flex-1">
                         <h5 class="text-lg font-semibold"><%= release.title %></h5>
-                        <div class="mt-2 text-sm">
-                          <div class="mb-2">
-                            <span class="font-medium text-gray-700">RSS Release:</span>
-                            <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2 ml-2"><%= release.resolution %></span>
-                            <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2"><%= release.codec %></span>
-                            <span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2"><%= release.source_tag %></span>
-                            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2"><%= release.audio %></span>
-                            <% if (release.rss_size_mb) { %>
-                              <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded"><%= release.rss_size_mb.toFixed(2) %> MB</span>
-                            <% } %>
+                        
+                        <!-- Side by side comparison -->
+                        <div class="mt-3 grid grid-cols-2 gap-4">
+                          <!-- RSS Release -->
+                          <div class="p-3 bg-white rounded border">
+                            <div class="font-medium text-gray-700 mb-2">RSS Release:</div>
+                            <div class="text-sm space-y-1">
+                              <div>
+                                <span class="font-medium">Resolution:</span>
+                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2 ml-2"><%= release.resolution %></span>
+                              </div>
+                              <div>
+                                <span class="font-medium">Codec:</span>
+                                <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2 ml-2"><%= release.codec %></span>
+                              </div>
+                              <div>
+                                <span class="font-medium">Source:</span>
+                                <span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2 ml-2"><%= release.source_tag %></span>
+                              </div>
+                              <div>
+                                <span class="font-medium">Audio:</span>
+                                <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2 ml-2"><%= release.audio %></span>
+                              </div>
+                              <% if (release.rss_size_mb) { %>
+                                <div>
+                                  <span class="font-medium">Size:</span>
+                                  <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded mr-2 ml-2"><%= release.rss_size_mb.toFixed(2) %> MB</span>
+                                </div>
+                              <% } %>
+                              <% if (release.audio_languages) { %>
+                                <div>
+                                  <span class="font-medium">Languages:</span>
+                                  <span class="ml-2 text-gray-600"><%= JSON.parse(release.audio_languages).join(', ') %></span>
+                                </div>
+                              <% } %>
+                              <% if (release.new_quality_score !== null) { %>
+                                <div>
+                                  <span class="font-medium">Quality Score:</span>
+                                  <span class="ml-2 text-green-600 font-semibold"><%= release.new_quality_score.toFixed(2) %></span>
+                                </div>
+                              <% } %>
+                            </div>
                           </div>
-                          <% if (release.audio_languages) { %>
-                            <div class="mb-2">
-                              <span class="font-medium text-gray-700">Languages:</span>
-                              <span class="ml-2 text-gray-600"><%= JSON.parse(release.audio_languages).join(', ') %></span>
+
+                          <!-- Existing Radarr File -->
+                          <% if (release.existing_file_attributes) { %>
+                            <% const existingAttrs = JSON.parse(release.existing_file_attributes); %>
+                            <div class="p-3 bg-gray-50 rounded border">
+                              <div class="font-medium text-gray-700 mb-2">Existing in Radarr:</div>
+                              <div class="text-sm space-y-1">
+                                <% if (release.radarr_movie_title) { %>
+                                  <div><span class="font-medium">Movie:</span> <strong><%= release.radarr_movie_title %></strong></div>
+                                <% } %>
+                                <% if (existingAttrs.path) { %>
+                                  <div class="text-xs text-gray-500 font-mono truncate" title="<%= existingAttrs.path %>"><%= existingAttrs.path %></div>
+                                <% } %>
+                                <% if (existingAttrs.resolution) { %>
+                                  <div>
+                                    <span class="font-medium">Resolution:</span>
+                                    <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.resolution %></span>
+                                  </div>
+                                <% } %>
+                                <% if (existingAttrs.codec) { %>
+                                  <div>
+                                    <span class="font-medium">Codec:</span>
+                                    <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.codec %></span>
+                                    <% if (existingAttrs.videoCodec) { %>
+                                      <span class="text-gray-600 text-xs">(<%= existingAttrs.videoCodec %>)</span>
+                                    <% } %>
+                                  </div>
+                                <% } %>
+                                <% if (existingAttrs.sourceTag) { %>
+                                  <div>
+                                    <span class="font-medium">Source:</span>
+                                    <span class="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.sourceTag %></span>
+                                  </div>
+                                <% } %>
+                                <% if (existingAttrs.audio || existingAttrs.audioFromMediaInfo) { %>
+                                  <div>
+                                    <span class="font-medium">Audio:</span>
+                                    <% if (existingAttrs.audio) { %>
+                                      <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.audio %></span>
+                                    <% } %>
+                                    <% if (existingAttrs.audioFromMediaInfo) { %>
+                                      <span class="text-gray-600 text-xs">(<%= existingAttrs.audioFromMediaInfo %>)</span>
+                                    <% } %>
+                                  </div>
+                                <% } %>
+                                <% if (existingAttrs.sizeMb) { %>
+                                  <div>
+                                    <span class="font-medium">Size:</span>
+                                    <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded mr-2 ml-2"><%= existingAttrs.sizeMb.toFixed(2) %> MB</span>
+                                  </div>
+                                <% } %>
+                                <% if (existingAttrs.audioLanguages && existingAttrs.audioLanguages.length > 0) { %>
+                                  <div>
+                                    <span class="font-medium">Languages:</span>
+                                    <span class="ml-2 text-gray-600"><%= existingAttrs.audioLanguages.join(', ') %></span>
+                                  </div>
+                                <% } %>
+                                <% if (release.radarr_existing_quality_score !== null) { %>
+                                  <div>
+                                    <span class="font-medium">Quality Score:</span>
+                                    <span class="ml-2 text-gray-600"><%= release.radarr_existing_quality_score.toFixed(2) %></span>
+                                  </div>
+                                <% } %>
+                              </div>
                             </div>
-                          <% } %>
-                          <% if (release.existing_size_mb) { %>
-                            <div class="mb-2">
-                              <span class="font-medium text-gray-700">Size Comparison:</span>
-                              <span class="ml-2 text-gray-600">Existing: <%= release.existing_size_mb.toFixed(2) %> MB</span>
-                              <span class="mx-2">→</span>
-                              <span class="text-green-600 font-semibold">New: <%= release.rss_size_mb ? release.rss_size_mb.toFixed(2) : 'N/A' %> MB</span>
-                            </div>
-                          <% } %>
-                          <% if (release.radarr_existing_quality_score !== null && release.new_quality_score !== null) { %>
-                            <div class="mb-2">
-                              <span class="font-medium text-gray-700">Quality Score:</span>
-                              <span class="ml-2 text-gray-600">Existing: <%= release.radarr_existing_quality_score.toFixed(2) %></span>
-                              <span class="mx-2">→</span>
-                              <span class="text-green-600 font-semibold">New: <%= release.new_quality_score.toFixed(2) %></span>
-                              <span class="text-blue-600 ml-2">(Δ<%= (release.new_quality_score - release.radarr_existing_quality_score).toFixed(2) %>)</span>
+                          <% } else { %>
+                            <div class="p-3 bg-gray-50 rounded border">
+                              <div class="font-medium text-gray-700 mb-2">Existing in Radarr:</div>
+                              <div class="text-sm">
+                                <% if (release.radarr_movie_title) { %>
+                                  <div><strong><%= release.radarr_movie_title %></strong></div>
+                                <% } %>
+                                <% if (release.existing_size_mb) { %>
+                                  <div>Size: <%= release.existing_size_mb.toFixed(2) %> MB</div>
+                                <% } %>
+                                <% if (release.radarr_existing_quality_score !== null) { %>
+                                  <div>Quality Score: <%= release.radarr_existing_quality_score.toFixed(2) %></div>
+                                <% } %>
+                              </div>
                             </div>
                           <% } %>
                         </div>
-                        <% if (release.radarr_movie_title) { %>
-                          <p class="mt-2 text-sm">Radarr: <strong><%= release.radarr_movie_title %></strong></p>
+
+                        <!-- Comparison Summary -->
+                        <div class="mt-3 p-3 bg-yellow-50 rounded border">
+                          <div class="text-sm">
+                            <% if (release.existing_size_mb && release.rss_size_mb) { %>
+                              <div class="mb-1">
+                                <span class="font-medium">Size:</span>
+                                <span class="text-gray-600"><%= release.existing_size_mb.toFixed(2) %> MB</span>
+                                <span class="mx-2">→</span>
+                                <span class="text-green-600 font-semibold"><%= release.rss_size_mb.toFixed(2) %> MB</span>
+                                <span class="text-blue-600 ml-2">
+                                  (<%= ((release.rss_size_mb - release.existing_size_mb) / release.existing_size_mb * 100).toFixed(1) %>%)
+                                </span>
+                              </div>
+                            <% } %>
+                            <% if (release.radarr_existing_quality_score !== null && release.new_quality_score !== null) { %>
+                              <div>
+                                <span class="font-medium">Quality Score:</span>
+                                <span class="text-gray-600"><%= release.radarr_existing_quality_score.toFixed(2) %></span>
+                                <span class="mx-2">→</span>
+                                <span class="text-green-600 font-semibold"><%= release.new_quality_score.toFixed(2) %></span>
+                                <span class="text-blue-600 ml-2">(Δ<%= (release.new_quality_score - release.radarr_existing_quality_score).toFixed(2) %>)</span>
+                              </div>
+                            <% } %>
+                          </div>
+                        </div>
+
+                        <!-- Download History -->
+                        <% if (release.radarr_history) { %>
+                          <% const history = JSON.parse(release.radarr_history); %>
+                          <% if (history.length > 0) { %>
+                            <div class="mt-3 p-3 bg-gray-50 rounded border">
+                              <div class="font-medium text-gray-700 mb-2">Download History:</div>
+                              <div class="text-xs space-y-1 max-h-32 overflow-y-auto">
+                                <% history.slice(0, 5).forEach((h: any) => { %>
+                                  <div class="text-gray-600">
+                                    <%= new Date(h.date).toLocaleDateString() %> - 
+                                    <%= h.sourceTitle || h.eventType %>
+                                    <% if (h.data && h.data.releaseGroup) { %>
+                                      (<%= h.data.releaseGroup %>)
+                                    <% } %>
+                                  </div>
+                                <% }); %>
+                              </div>
+                            </div>
+                          <% } %>
                         <% } %>
-                        <p class="mt-1 text-xs text-gray-500">Published: <%= new Date(release.published_at).toLocaleDateString() %></p>
+
+                        <p class="mt-2 text-xs text-gray-500">Published: <%= new Date(release.published_at).toLocaleDateString() %></p>
                       </div>
                       <div class="ml-4 space-x-2">
                         <button onclick="upgradeMovie(<%= release.id %>)" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded text-sm">

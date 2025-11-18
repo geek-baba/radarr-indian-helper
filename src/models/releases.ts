@@ -70,6 +70,9 @@ export const releasesModel = {
           radarr_existing_quality_score = ?,
           new_quality_score = ?,
           status = ?,
+          existing_file_path = ?,
+          existing_file_attributes = ?,
+          radarr_history = ?,
           last_checked_at = datetime('now')
         WHERE guid = ?
       `).run(
@@ -96,6 +99,9 @@ export const releasesModel = {
         release.radarr_existing_quality_score || null,
         release.new_quality_score || null,
         status,
+        (release as any).existing_file_path || null,
+        (release as any).existing_file_attributes || null,
+        (release as any).radarr_history || null,
         release.guid
       );
       return releasesModel.getByGuid(release.guid)!;
@@ -107,8 +113,9 @@ export const releasesModel = {
           resolution, source_tag, codec, audio, rss_size_mb, existing_size_mb,
           published_at, tmdb_id, tmdb_title, tmdb_original_language, is_dubbed,
           audio_languages, radarr_movie_id, radarr_movie_title,
-          radarr_existing_quality_score, new_quality_score, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          radarr_existing_quality_score, new_quality_score, status,
+          existing_file_path, existing_file_attributes, radarr_history
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         release.guid,
         release.title,
@@ -133,7 +140,10 @@ export const releasesModel = {
         release.radarr_movie_title || null,
         release.radarr_existing_quality_score || null,
         release.new_quality_score || null,
-        release.status
+        release.status,
+        (release as any).existing_file_path || null,
+        (release as any).existing_file_attributes || null,
+        (release as any).radarr_history || null
       );
       return releasesModel.getById(result.lastInsertRowid as number)!;
     }

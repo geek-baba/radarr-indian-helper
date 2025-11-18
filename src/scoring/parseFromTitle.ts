@@ -25,7 +25,7 @@ const sourcePatterns = [
 const audioPatterns = [
   { pattern: /Atmos/gi, value: 'Atmos' },
   { pattern: /TrueHD/gi, value: 'TrueHD' },
-  { pattern: /DDP5\.1|DD\+5\.1|EAC3/gi, value: 'DDP5.1' },
+  { pattern: /DD\+?\s*5\.1|DDP5\.1|EAC3/gi, value: 'DDP5.1' }, // Match DD+ 5.1, DD+5.1, DDP5.1, EAC3
   { pattern: /DD5\.1|AC3/gi, value: 'DD5.1' },
   { pattern: /2\.0|Stereo/gi, value: '2.0' },
 ];

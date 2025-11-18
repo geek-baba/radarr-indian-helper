@@ -23,17 +23,22 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
   // Try to extract TMDB ID from description
   let tmdbId: number | undefined;
   const description = item.description || item.content || '';
+  // Try multiple patterns to find TMDB ID
   const tmdbMatch = description.match(/themoviedb\.org\/movie\/(\d+)/i) || 
+                    description.match(/TMDB\s+Link.*?(\d{4,})/i) ||
                     description.match(/TMDB.*?(\d{4,})/i);
   if (tmdbMatch) {
     tmdbId = parseInt(tmdbMatch[1], 10);
+    console.log(`  Extracted TMDB ID ${tmdbId} from RSS feed for: ${title}`);
   }
 
   // Try to extract size from description (RSS feeds often have size in description)
   let sizeMb: number | undefined = parsed.sizeMb;
   if (!sizeMb && description) {
-    // Look for size patterns in description like "Size: 3.16 GiB" or "3.16 GB"
-    const sizeMatch = description.match(/Size[:\s]+(\d+(?:\.\d+)?)\s*(GB|MB|GiB|MiB)/i) ||
+    // Look for size patterns in description like "Size: 3.16 GiB" or "3.52 GiB"
+    // Try "Size:" pattern first, then general pattern
+    const sizeMatch = description.match(/<strong>Size<\/strong>:\s*(\d+(?:\.\d+)?)\s*(GB|MB|GiB|MiB)/i) ||
+                      description.match(/Size[:\s]+(\d+(?:\.\d+)?)\s*(GB|MB|GiB|MiB)/i) ||
                       description.match(/(\d+(?:\.\d+)?)\s*(GB|MB|GiB|MiB)/i);
     if (sizeMatch) {
       const sizeValue = parseFloat(sizeMatch[1]);
@@ -43,6 +48,7 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
       } else {
         sizeMb = sizeValue;
       }
+      console.log(`  Extracted size ${sizeMb.toFixed(2)} MB from RSS feed for: ${title}`);
     }
   }
 

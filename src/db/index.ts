@@ -49,6 +49,9 @@ db.exec(`
     new_quality_score REAL,
     status TEXT NOT NULL DEFAULT 'NEW',
     last_checked_at TEXT NOT NULL DEFAULT (datetime('now')),
+    existing_file_path TEXT,
+    existing_file_attributes TEXT,
+    radarr_history TEXT,
     FOREIGN KEY (feed_id) REFERENCES rss_feeds(id)
   );
 
