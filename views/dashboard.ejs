@@ -26,38 +26,38 @@
       </button>
     </div>
 
-    <% if (feeds.length === 0) { %>
-      <p class="text-gray-600">No feeds configured. Go to Settings to add RSS feeds.</p>
+    <% if (!movieGroups || movieGroups.length === 0) { %>
+      <p class="text-gray-600">No releases found. Go to Settings to add RSS feeds and refresh.</p>
     <% } else { %>
-      <% feeds.forEach(feed => { %>
+      <% movieGroups.forEach(movie => { %>
         <div class="mb-8 bg-white rounded-lg shadow p-6">
-          <h3 class="text-xl font-semibold mb-4"><%= feed.feedName %></h3>
+          <h3 class="text-xl font-semibold mb-4"><%= movie.movieTitle %></h3>
           
           <!-- Add Section -->
-          <% if (feed.add.length > 0) { %>
+          <% if (movie.add.length > 0) { %>
             <div class="mb-6">
-              <h4 class="text-lg font-medium mb-3 text-green-600">Add (<%= feed.add.length %>)</h4>
+              <h4 class="text-lg font-medium mb-3 text-green-600">Add (<%= movie.add.length %>)</h4>
               <div class="grid gap-4">
-                <% feed.add.forEach(release => { %>
+                <% movie.add.forEach(release => { %>
                   <div class="border-l-4 border-green-500 bg-green-50 rounded p-4">
                     <div class="flex justify-between items-start">
                       <div class="flex-1 flex gap-4">
                         <!-- Movie Poster -->
                         <div class="flex-shrink-0">
-                          <% if (release.posterUrl) { %>
-                            <img src="<%= release.posterUrl %>" alt="<%= release.tmdb_title || release.title %>" class="w-32 h-48 object-cover rounded shadow">
+                          <% if (movie.posterUrl || release.posterUrl) { %>
+                            <img src="<%= movie.posterUrl || release.posterUrl %>" alt="<%= movie.movieTitle %>" class="w-32 h-48 object-cover rounded shadow">
                           <% } else { %>
                             <div class="w-32 h-48 bg-gray-200 rounded shadow flex items-center justify-center text-gray-400 text-xs text-center p-2">No Poster</div>
                           <% } %>
                           <div class="mt-2 text-xs space-y-1">
-                            <% if (release.imdbId) { %>
-                              <a href="https://www.imdb.com/title/<%= release.imdbId %>" target="_blank" class="text-blue-600 hover:underline block">IMDB</a>
+                            <% if (movie.imdbId || release.imdbId) { %>
+                              <a href="https://www.imdb.com/title/<%= movie.imdbId || release.imdbId %>" target="_blank" class="text-blue-600 hover:underline block">IMDB</a>
                             <% } %>
-                            <% if (release.tmdbId) { %>
-                              <a href="https://www.themoviedb.org/movie/<%= release.tmdbId %>" target="_blank" class="text-blue-600 hover:underline block">TMDB</a>
+                            <% if (movie.tmdbId || release.tmdbId || release.tmdb_id) { %>
+                              <a href="https://www.themoviedb.org/movie/<%= movie.tmdbId || release.tmdbId || release.tmdb_id %>" target="_blank" class="text-blue-600 hover:underline block">TMDB</a>
                             <% } %>
-                            <% if (release.originalLanguage) { %>
-                              <div class="text-gray-600">Lang: <%= release.originalLanguage %></div>
+                            <% if (movie.originalLanguage || release.originalLanguage) { %>
+                              <div class="text-gray-600">Lang: <%= movie.originalLanguage || release.originalLanguage %></div>
                             <% } %>
                           </div>
                         </div>
@@ -104,11 +104,11 @@
           <% } %>
 
           <!-- Existing Section -->
-          <% if (feed.existing.length > 0) { %>
+          <% if (movie.existing.length > 0) { %>
             <div class="mb-6">
-              <h4 class="text-lg font-medium mb-3 text-blue-600">Existing (<%= feed.existing.length %>)</h4>
+              <h4 class="text-lg font-medium mb-3 text-blue-600">Existing (<%= movie.existing.length %>)</h4>
               <div class="grid gap-4">
-                <% feed.existing.forEach(release => { %>
+                <% movie.existing.forEach(release => { %>
                   <div class="border-l-4 border-blue-500 bg-blue-50 rounded p-4">
                     <div class="flex justify-between items-start">
                       <div class="flex-1 flex gap-4">
@@ -213,11 +213,11 @@
           <% } %>
 
           <!-- Upgrade Section -->
-          <% if (feed.upgrade.length > 0) { %>
+          <% if (movie.upgrade.length > 0) { %>
             <div class="mb-6">
-              <h4 class="text-lg font-medium mb-3 text-orange-600">Upgrade (<%= feed.upgrade.length %>)</h4>
+              <h4 class="text-lg font-medium mb-3 text-orange-600">Upgrade (<%= movie.upgrade.length %>)</h4>
               <div class="grid gap-4">
-                <% feed.upgrade.forEach(release => { %>
+                <% movie.upgrade.forEach(release => { %>
                   <div class="border-l-4 border-orange-500 bg-orange-50 rounded p-4">
                     <div class="flex justify-between items-start">
                       <div class="flex-1 flex gap-4">
@@ -379,8 +379,8 @@
           <% } %>
 
           <!-- Summary -->
-          <% if (feed.add.length === 0 && feed.existing.length === 0 && feed.upgrade.length === 0) { %>
-            <p class="text-gray-600">No releases found for this feed.</p>
+          <% if (movie.add.length === 0 && movie.existing.length === 0 && movie.upgrade.length === 0) { %>
+            <p class="text-gray-600">No releases found for this movie.</p>
           <% } %>
         </div>
       <% }); %>
