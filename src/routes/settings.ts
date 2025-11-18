@@ -120,12 +120,16 @@ router.post('/quality', async (req: Request, res: Response) => {
 
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
-    // Run in background
-    fetchAndProcessFeeds().catch((error) => {
-      console.error('Background feed refresh error:', error);
-    });
+    // Run in background - don't await, let it process asynchronously
+    fetchAndProcessFeeds()
+      .then(() => {
+        console.log('Feed refresh completed successfully');
+      })
+      .catch((error) => {
+        console.error('Background feed refresh error:', error);
+      });
 
-    res.json({ success: true, message: 'Feed refresh started' });
+    res.json({ success: true, message: 'Feed refresh started. Check console logs for progress.' });
   } catch (error) {
     console.error('Refresh error:', error);
     res.status(500).json({ error: 'Failed to start refresh' });

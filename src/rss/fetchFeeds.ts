@@ -29,12 +29,25 @@ export async function fetchAndProcessFeeds(): Promise<void> {
 
       console.log(`Found ${feedData.items.length} items in feed: ${feed.name}`);
 
+      let processedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
       for (const item of feedData.items) {
         try {
           if (!item.title && !item.link) {
+            skippedCount++;
             continue; // Skip items without title or link
           }
+          
           const parsed = parseRSSItem(item as any, feed.id!, feed.name);
+          
+          // Check if we've already processed this item (by guid)
+          const existing = releasesModel.getByGuid(parsed.guid);
+          if (existing && (existing.status === 'ADDED' || existing.status === 'UPGRADED')) {
+            // Skip items that have already been added or upgraded
+            continue;
+          }
 
           // Check if release is allowed
           const allowed = isReleaseAllowed(parsed.parsed, settings);
@@ -53,7 +66,12 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           }
 
           // For allowed releases, lookup in Radarr
-          const lookupResults = await radarrClient.lookupMovie(parsed.title);
+          // Use a more specific search term with year if available
+          const searchTerm = parsed.year 
+            ? `${parsed.title} ${parsed.year}` 
+            : parsed.title;
+          
+          const lookupResults = await radarrClient.lookupMovie(searchTerm);
           
           if (lookupResults.length === 0) {
             // No movie found in Radarr - mark as NEW
@@ -63,6 +81,7 @@ export async function fetchAndProcessFeeds(): Promise<void> {
               last_checked_at: new Date().toISOString(),
             };
             releasesModel.upsert(release);
+            processedCount++;
             continue;
           }
 
@@ -157,10 +176,15 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           };
 
           releasesModel.upsert(release);
+          processedCount++;
         } catch (itemError) {
-          console.error(`Error processing item: ${item.title}`, itemError);
+          errorCount++;
+          console.error(`Error processing item: ${item.title || item.link || 'unknown'}`, itemError);
+          // Continue processing other items even if one fails
         }
       }
+      
+      console.log(`Feed ${feed.name}: Processed ${processedCount}, Skipped ${skippedCount}, Errors ${errorCount}`);
     } catch (feedError) {
       console.error(`Error fetching feed: ${feed.name}`, feedError);
     }
