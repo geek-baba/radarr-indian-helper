@@ -156,7 +156,8 @@ router.get('/', async (req: Request, res: Response) => {
                 movieGroup.tmdbId = tmdbMovie.id;
               }
               if (!movieGroup.posterUrl && tmdbMovie.poster_path) {
-                movieGroup.posterUrl = tmdbClient.getPosterUrl(tmdbMovie.poster_path);
+                const posterUrl = tmdbClient.getPosterUrl(tmdbMovie.poster_path);
+                movieGroup.posterUrl = posterUrl ?? undefined;
               }
               if (!movieGroup.imdbId && tmdbMovie.imdb_id) {
                 movieGroup.imdbId = tmdbMovie.imdb_id;
