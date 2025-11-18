@@ -83,8 +83,13 @@ router.get('/', async (req: Request, res: Response) => {
       
       // Categorize releases by status
       const add = releases.filter(r => r.status === 'NEW');
-      const existing = releases.filter(r => r.status === 'IGNORED' && r.radarr_movie_id);
-      const upgrade = releases.filter(r => r.status === 'UPGRADE_CANDIDATE');
+      const existing = releases.filter(r => (
+        (r.status === 'IGNORED' || r.status === 'ADDED') &&
+        r.radarr_movie_id
+      ));
+      const upgrade = releases.filter(r => (
+        r.status === 'UPGRADE_CANDIDATE' || r.status === 'UPGRADED'
+      ));
       
       movieGroups.push({
         movieKey,
