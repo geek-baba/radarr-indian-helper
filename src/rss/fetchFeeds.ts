@@ -32,6 +32,9 @@ export async function fetchAndProcessFeeds(): Promise<void> {
       let processedCount = 0;
       let skippedCount = 0;
       let errorCount = 0;
+      let newCount = 0;
+      let ignoredCount = 0;
+      let upgradeCount = 0;
 
       for (const item of feedData.items) {
         try {
@@ -62,6 +65,7 @@ export async function fetchAndProcessFeeds(): Promise<void> {
               last_checked_at: new Date().toISOString(),
             };
             releasesModel.upsert(release);
+            ignoredCount++;
             continue;
           }
 
@@ -81,6 +85,7 @@ export async function fetchAndProcessFeeds(): Promise<void> {
               last_checked_at: new Date().toISOString(),
             };
             releasesModel.upsert(release);
+            newCount++;
             processedCount++;
             continue;
           }
@@ -100,6 +105,8 @@ export async function fetchAndProcessFeeds(): Promise<void> {
               last_checked_at: new Date().toISOString(),
             };
             releasesModel.upsert(release);
+            newCount++;
+            processedCount++;
             continue;
           }
 
@@ -156,8 +163,10 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             sizeDeltaPercent >= settings.minSizeIncreasePercentForUpgrade
           ) {
             status = 'UPGRADE_CANDIDATE';
+            upgradeCount++;
           } else {
             status = 'IGNORED';
+            ignoredCount++;
           }
 
           const release: Omit<Release, 'id'> = {
@@ -185,6 +194,7 @@ export async function fetchAndProcessFeeds(): Promise<void> {
       }
       
       console.log(`Feed ${feed.name}: Processed ${processedCount}, Skipped ${skippedCount}, Errors ${errorCount}`);
+      console.log(`  Status breakdown: NEW=${newCount}, UPGRADE_CANDIDATE=${upgradeCount}, IGNORED=${ignoredCount}`);
     } catch (feedError) {
       console.error(`Error fetching feed: ${feed.name}`, feedError);
     }
