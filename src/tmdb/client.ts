@@ -1,5 +1,4 @@
 import axios, { AxiosInstance } from 'axios';
-import { config } from '../config';
 
 interface TMDBMovie {
   id: number;
