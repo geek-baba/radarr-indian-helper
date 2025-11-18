@@ -57,24 +57,60 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     // Group releases by movie (using TMDB ID as primary key, fallback to normalized title)
+    // Two-pass approach: first group by ID, then merge title-based groups that match ID-based groups
     const releasesByMovie: { [key: string]: any[] } = {};
+    const idToKeyMap: { [key: string]: string } = {}; // Map TMDB/Radarr IDs to their movieKey
     
+    // First pass: Group releases that have TMDB or Radarr IDs
     for (const release of allReleases) {
-      // Create a unique key for the movie
-      let movieKey: string;
-      if (release.tmdb_id) {
-        movieKey = `tmdb_${release.tmdb_id}`;
-      } else if (release.radarr_movie_id) {
-        movieKey = `radarr_${release.radarr_movie_id}`;
-      } else {
-        // Fallback to normalized title + year
-        movieKey = `title_${release.normalized_title}_${release.year || 'unknown'}`;
+      if (release.tmdb_id || release.radarr_movie_id) {
+        let movieKey: string;
+        if (release.tmdb_id) {
+          movieKey = `tmdb_${release.tmdb_id}`;
+          idToKeyMap[`tmdb_${release.tmdb_id}`] = movieKey;
+        } else {
+          movieKey = `radarr_${release.radarr_movie_id}`;
+          idToKeyMap[`radarr_${release.radarr_movie_id}`] = movieKey;
+        }
+        
+        if (!releasesByMovie[movieKey]) {
+          releasesByMovie[movieKey] = [];
+        }
+        releasesByMovie[movieKey].push(release);
       }
-      
-      if (!releasesByMovie[movieKey]) {
-        releasesByMovie[movieKey] = [];
+    }
+    
+    // Second pass: For releases without IDs, try to match them to existing groups
+    // by checking if any release in an ID-based group has the same normalized_title + year
+    for (const release of allReleases) {
+      if (!release.tmdb_id && !release.radarr_movie_id) {
+        const titleKey = `title_${release.normalized_title}_${release.year || 'unknown'}`;
+        
+        // Try to find a matching group by checking normalized_title + year
+        let matched = false;
+        for (const existingKey in releasesByMovie) {
+          const existingReleases = releasesByMovie[existingKey];
+          // Check if any release in this group has the same normalized_title + year
+          const hasMatch = existingReleases.some(r => 
+            r.normalized_title === release.normalized_title && 
+            r.year === release.year
+          );
+          
+          if (hasMatch) {
+            releasesByMovie[existingKey].push(release);
+            matched = true;
+            break;
+          }
+        }
+        
+        // If no match found, create a new group
+        if (!matched) {
+          if (!releasesByMovie[titleKey]) {
+            releasesByMovie[titleKey] = [];
+          }
+          releasesByMovie[titleKey].push(release);
+        }
       }
-      releasesByMovie[movieKey].push(release);
     }
 
     // Build movie groups with metadata
