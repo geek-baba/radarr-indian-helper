@@ -70,29 +70,50 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           }
 
           // For allowed releases, lookup in Radarr
-          // Use a more specific search term with year if available
-          const searchTerm = parsed.year 
-            ? `${parsed.title} ${parsed.year}` 
-            : parsed.title;
-          
-          const lookupResults = await radarrClient.lookupMovie(searchTerm);
-          
-          if (lookupResults.length === 0) {
-            // No movie found in Radarr - mark as NEW
-            const release: Omit<Release, 'id'> = {
-              ...parsed,
-              status: 'NEW',
-              last_checked_at: new Date().toISOString(),
-            };
-            releasesModel.upsert(release);
-            newCount++;
-            processedCount++;
-            continue;
+          // First, try to use TMDB ID if we extracted it from the RSS feed
+          let radarrMovie: any = null;
+          let lookupResult: any = null;
+
+          if ((parsed as any).tmdb_id) {
+            // Direct lookup by TMDB ID - this is more reliable
+            radarrMovie = await radarrClient.getMovie((parsed as any).tmdb_id);
+            if (radarrMovie && radarrMovie.id) {
+              lookupResult = {
+                tmdbId: radarrMovie.tmdbId,
+                title: radarrMovie.title,
+                year: radarrMovie.year,
+                originalLanguage: radarrMovie.originalLanguage,
+              };
+            }
           }
 
-          // Use first lookup result
-          const lookupResult = lookupResults[0];
-          const radarrMovie = await radarrClient.getMovie(lookupResult.tmdbId);
+          // If TMDB ID lookup didn't work, try searching by title
+          if (!radarrMovie || !radarrMovie.id) {
+            // Use clean title for searching (without quality info)
+            const searchTerm = (parsed as any).clean_title || (parsed.year 
+              ? `${parsed.title} ${parsed.year}` 
+              : parsed.title);
+            
+            console.log(`  Searching Radarr for: "${searchTerm}"`);
+            const lookupResults = await radarrClient.lookupMovie(searchTerm);
+            
+            if (lookupResults.length === 0) {
+              // No movie found in Radarr - mark as NEW
+              const release: Omit<Release, 'id'> = {
+                ...parsed,
+                status: 'NEW',
+                last_checked_at: new Date().toISOString(),
+              };
+              releasesModel.upsert(release);
+              newCount++;
+              processedCount++;
+              continue;
+            }
+
+            // Use first lookup result
+            lookupResult = lookupResults[0];
+            radarrMovie = await radarrClient.getMovie(lookupResult.tmdbId);
+          }
 
           if (!radarrMovie || !radarrMovie.id) {
             // Movie not in Radarr - mark as NEW
