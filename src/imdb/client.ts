@@ -91,10 +91,10 @@ class IMDBClient {
    */
   async searchGoogleForImdbId(query: string, year?: number): Promise<string | null> {
     try {
-      // Construct search query - use "clean title yyyy tmdb" format
+      // Construct search query - try "clean title yyyy imdb" format for better results
       const searchQuery = year 
-        ? `${query} ${year} tmdb`
-        : `${query} tmdb`;
+        ? `${query} ${year} imdb`
+        : `${query} imdb`;
       
       // Use DuckDuckGo HTML search (no API key needed, privacy-friendly)
       // DuckDuckGo doesn't require API keys and is more lenient with automated requests
@@ -102,19 +102,30 @@ class IMDBClient {
       
       const response = await this.client.get(searchUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Referer': 'https://duckduckgo.com/',
         },
         responseType: 'text',
-        timeout: 10000, // 10 second timeout
+        timeout: 15000, // 15 second timeout
+        maxRedirects: 5,
       });
+      
+      const htmlContent = response.data;
+      
+      // Debug: log a snippet of the response to see what we're getting
+      if (htmlContent && htmlContent.length > 0) {
+        const snippet = htmlContent.substring(0, 500);
+        console.log(`  DuckDuckGo response snippet (first 500 chars): ${snippet.substring(0, 200)}...`);
+      }
       
       // Extract IMDB ID from search results
       // Look for patterns like imdb.com/title/tt1234567 or www.imdb.com/title/tt1234567
       // Also try to find tt\d{7,} pattern directly in case the URL structure is different
       const imdbPattern = /(?:www\.)?imdb\.com\/title\/(tt\d{7,})/gi;
-      const matches = response.data.match(imdbPattern);
+      const matches = htmlContent.match(imdbPattern);
       
       if (matches && matches.length > 0) {
         // Extract the first IMDB ID found
@@ -126,18 +137,30 @@ class IMDBClient {
       }
       
       // Fallback: try to find IMDB ID pattern directly (tt followed by 7+ digits)
+      // But be more careful - look for it in URLs or links
       const directPattern = /\btt\d{7,}\b/gi;
-      const directMatches = response.data.match(directPattern);
+      const directMatches = htmlContent.match(directPattern);
       if (directMatches && directMatches.length > 0) {
-        // Use the first match
+        // Filter to find the one that looks like an IMDB ID (usually in a URL context)
+        // Look for patterns near "imdb" or in href attributes
+        const imdbContextPattern = /(?:imdb|href[^>]*title[^>]*)(?:[^>]*>)?[^<]*?(tt\d{7,})/gi;
+        const contextMatches = htmlContent.match(imdbContextPattern);
+        if (contextMatches && contextMatches.length > 0) {
+          const idMatch = contextMatches[0].match(/tt\d{7,}/i);
+          if (idMatch) {
+            console.log(`  Found IMDB ID ${idMatch[0]} via DuckDuckGo search (context pattern) for: "${query}"`);
+            return idMatch[0];
+          }
+        }
+        // If no context match, use the first direct match
         console.log(`  Found IMDB ID ${directMatches[0]} via DuckDuckGo search (direct pattern) for: "${query}"`);
         return directMatches[0];
       }
       
-      console.log(`  No IMDB ID found in DuckDuckGo search results for: "${query}"`);
+      console.log(`  No IMDB ID found in DuckDuckGo search results for: "${query}" (response length: ${htmlContent.length})`);
       return null;
-    } catch (error) {
-      console.error('DuckDuckGo search for IMDB ID error:', error);
+    } catch (error: any) {
+      console.error(`  DuckDuckGo search for IMDB ID error for "${query}":`, error?.message || error);
       return null;
     }
   }
