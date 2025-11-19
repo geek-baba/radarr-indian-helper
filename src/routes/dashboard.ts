@@ -233,6 +233,9 @@ router.get('/', async (req: Request, res: Response) => {
 
     // Enrich with movie metadata (poster, IMDB, etc.)
     for (const movieGroup of movieGroups) {
+      // Get all releases for this movie group
+      const groupReleases = releasesByMovie[movieGroup.movieKey] || [];
+      
       // Get movie metadata if we have TMDB ID or Radarr movie ID
       if (movieGroup.tmdbId || movieGroup.radarrMovieId) {
         try {
@@ -252,16 +255,16 @@ router.get('/', async (req: Request, res: Response) => {
               }
             }
             
-                    // Get IMDB ID (prefer from Radarr, but also check releases)
-                    if (movie.imdbId) {
-                      movieGroup.imdbId = movie.imdbId;
-                    } else if (!movieGroup.imdbId) {
-                      // If not in Radarr, use IMDB ID from releases
-                      const releaseWithImdb = releases.find(r => r.imdb_id);
-                      if (releaseWithImdb?.imdb_id) {
-                        movieGroup.imdbId = releaseWithImdb.imdb_id;
-                      }
-                    }
+            // Get IMDB ID (prefer from Radarr, but also check releases)
+            if (movie.imdbId) {
+              movieGroup.imdbId = movie.imdbId;
+            } else if (!movieGroup.imdbId) {
+              // If not in Radarr, use IMDB ID from releases
+              const releaseWithImdb = groupReleases.find((r: any) => r.imdb_id);
+              if (releaseWithImdb?.imdb_id) {
+                movieGroup.imdbId = releaseWithImdb.imdb_id;
+              }
+            }
             
             // Get TMDB ID (already have it, but ensure it's set)
             if (movie.tmdbId) {
@@ -276,6 +279,14 @@ router.get('/', async (req: Request, res: Response) => {
         } catch (error) {
           // Silently fail - just don't add metadata
           console.error(`Error fetching movie metadata for ${movieGroup.movieTitle}:`, error);
+        }
+      }
+      
+      // If we still don't have IMDB ID, check releases directly
+      if (!movieGroup.imdbId) {
+        const releaseWithImdb = groupReleases.find((r: any) => r.imdb_id);
+        if (releaseWithImdb?.imdb_id) {
+          movieGroup.imdbId = releaseWithImdb.imdb_id;
         }
       }
       
