@@ -56,13 +56,69 @@ class RadarrClient {
     }
   }
 
-  async addMovie(movie: RadarrLookupResult, qualityProfileId: number = 1, rootFolderPath: string = '/movies'): Promise<RadarrMovie> {
+  async getQualityProfiles(): Promise<Array<{ id: number; name: string }>> {
     try {
+      const response = await this.client.get<Array<{ id: number; name: string }>>('/qualityProfile');
+      return response.data || [];
+    } catch (error) {
+      console.error('Radarr get quality profiles error:', error);
+      return [];
+    }
+  }
+
+  async getRootFolders(): Promise<Array<{ id: number; path: string }>> {
+    try {
+      const response = await this.client.get<Array<{ id: number; path: string }>>('/rootFolder');
+      return response.data || [];
+    } catch (error) {
+      console.error('Radarr get root folders error:', error);
+      return [];
+    }
+  }
+
+  async lookupMovieByTmdbId(tmdbId: number): Promise<RadarrLookupResult | null> {
+    try {
+      const response = await this.client.get<RadarrLookupResult>(`/movie/lookup/tmdb`, {
+        params: { tmdbId },
+      });
+      return response.data || null;
+    } catch (error) {
+      console.error('Radarr lookup movie by TMDB ID error:', error);
+      return null;
+    }
+  }
+
+  async addMovie(movie: RadarrLookupResult, qualityProfileId?: number, rootFolderPath?: string): Promise<RadarrMovie> {
+    try {
+      // Get quality profile if not provided
+      let finalQualityProfileId = qualityProfileId;
+      if (!finalQualityProfileId) {
+        const profiles = await this.getQualityProfiles();
+        if (profiles.length > 0) {
+          finalQualityProfileId = profiles[0].id; // Use first profile as default
+          console.log(`Using quality profile: ${profiles[0].name} (ID: ${finalQualityProfileId})`);
+        } else {
+          finalQualityProfileId = 1; // Fallback
+        }
+      }
+
+      // Get root folder if not provided
+      let finalRootFolderPath = rootFolderPath;
+      if (!finalRootFolderPath) {
+        const folders = await this.getRootFolders();
+        if (folders.length > 0) {
+          finalRootFolderPath = folders[0].path; // Use first folder as default
+          console.log(`Using root folder: ${finalRootFolderPath}`);
+        } else {
+          finalRootFolderPath = '/movies'; // Fallback
+        }
+      }
+
       const addMovieRequest = {
         title: movie.title,
         year: movie.year,
-        qualityProfileId,
-        rootFolderPath,
+        qualityProfileId: finalQualityProfileId,
+        rootFolderPath: finalRootFolderPath,
         tmdbId: movie.tmdbId,
         monitored: true,
         addOptions: {
@@ -71,9 +127,10 @@ class RadarrClient {
       };
       const response = await this.client.post<RadarrMovie>('/movie', addMovieRequest);
       return response.data;
-    } catch (error) {
-      console.error('Radarr add movie error:', error);
-      throw error;
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      console.error('Radarr add movie error:', errorMessage, error?.response?.data);
+      throw new Error(`Failed to add movie to Radarr: ${errorMessage}`);
     }
   }
 

@@ -21,24 +21,46 @@ router.post('/:id/add', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'TMDB ID not found' });
     }
 
-    // Lookup movie details
-    const lookupResults = await radarrClient.lookupMovie(release.title);
-    const movie = lookupResults.find((m) => m.tmdbId === release.tmdb_id);
+    // Lookup movie by TMDB ID directly (more reliable than title search)
+    let movie = await radarrClient.lookupMovieByTmdbId(release.tmdb_id);
+    
+    // Fallback to title lookup if TMDB ID lookup fails
+    if (!movie) {
+      console.log(`TMDB ID lookup failed for ${release.tmdb_id}, trying title lookup...`);
+      const lookupResults = await radarrClient.lookupMovie(release.tmdb_title || release.title);
+      movie = lookupResults.find((m) => m.tmdbId === release.tmdb_id) || null;
+    }
 
     if (!movie) {
-      return res.status(404).json({ error: 'Movie not found in Radarr lookup' });
+      return res.status(404).json({ 
+        error: `Movie not found in Radarr lookup for TMDB ID ${release.tmdb_id}` 
+      });
     }
 
     // Add to Radarr
-    await radarrClient.addMovie(movie);
+    const addedMovie = await radarrClient.addMovie(movie);
 
-    // Update release status
-    releasesModel.updateStatus(release.id!, 'ADDED');
+    // Update release with Radarr movie ID
+    const updatedRelease: Omit<Release, 'id'> = {
+      ...release,
+      radarr_movie_id: addedMovie.id,
+      radarr_movie_title: addedMovie.title,
+      status: 'ADDED',
+    };
+    releasesModel.upsert(updatedRelease);
 
-    res.json({ success: true, message: 'Movie added to Radarr' });
-  } catch (error) {
+    res.json({ 
+      success: true, 
+      message: `Movie "${addedMovie.title}" added to Radarr successfully`,
+      radarrMovieId: addedMovie.id,
+    });
+  } catch (error: any) {
     console.error('Add movie error:', error);
-    res.status(500).json({ error: 'Failed to add movie' });
+    const errorMessage = error?.message || error?.toString() || 'Unknown error';
+    res.status(500).json({ 
+      error: `Failed to add movie: ${errorMessage}`,
+      details: error?.response?.data || undefined,
+    });
   }
 });
 
@@ -64,10 +86,17 @@ router.post('/:id/upgrade', async (req: Request, res: Response) => {
     // Update release status
     releasesModel.updateStatus(release.id!, 'UPGRADED');
 
-    res.json({ success: true, message: 'Upgrade search triggered in Radarr' });
-  } catch (error) {
+    res.json({ 
+      success: true, 
+      message: `Upgrade search triggered for "${release.radarr_movie_title || release.title}"` 
+    });
+  } catch (error: any) {
     console.error('Upgrade movie error:', error);
-    res.status(500).json({ error: 'Failed to trigger upgrade' });
+    const errorMessage = error?.message || error?.toString() || 'Unknown error';
+    res.status(500).json({ 
+      error: `Failed to trigger upgrade: ${errorMessage}`,
+      details: error?.response?.data || undefined,
+    });
   }
 });
 
