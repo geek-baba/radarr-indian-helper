@@ -115,46 +115,61 @@ class IMDBClient {
       
       const htmlContent = response.data;
       
-      // Debug: log a snippet of the response to see what we're getting
-      if (htmlContent && htmlContent.length > 0) {
-        const snippet = htmlContent.substring(0, 500);
-        console.log(`  DuckDuckGo response snippet (first 500 chars): ${snippet.substring(0, 200)}...`);
+      // Extract IMDB ID from search results - try multiple patterns
+      // Pattern 1: Direct IMDB URL in href attributes
+      const hrefPattern = /href=["']([^"']*imdb[^"']*\/title\/(tt\d{7,})[^"']*)["']/gi;
+      let hrefMatch = hrefPattern.exec(htmlContent);
+      if (hrefMatch && hrefMatch[2]) {
+        console.log(`  Found IMDB ID ${hrefMatch[2]} via DuckDuckGo search (href pattern) for: "${query}"`);
+        return hrefMatch[2];
       }
       
-      // Extract IMDB ID from search results
-      // Look for patterns like imdb.com/title/tt1234567 or www.imdb.com/title/tt1234567
-      // Also try to find tt\d{7,} pattern directly in case the URL structure is different
-      const imdbPattern = /(?:www\.)?imdb\.com\/title\/(tt\d{7,})/gi;
-      const matches = htmlContent.match(imdbPattern);
-      
-      if (matches && matches.length > 0) {
-        // Extract the first IMDB ID found
-        const imdbIdMatch = matches[0].match(/tt\d{7,}/i);
+      // Pattern 2: IMDB URL anywhere in the HTML
+      const imdbUrlPattern = /(?:www\.)?imdb\.com\/title\/(tt\d{7,})/gi;
+      const urlMatches = htmlContent.match(imdbUrlPattern);
+      if (urlMatches && urlMatches.length > 0) {
+        const imdbIdMatch = urlMatches[0].match(/tt\d{7,}/i);
         if (imdbIdMatch) {
-          console.log(`  Found IMDB ID ${imdbIdMatch[0]} via DuckDuckGo search for: "${query}"`);
+          console.log(`  Found IMDB ID ${imdbIdMatch[0]} via DuckDuckGo search (URL pattern) for: "${query}"`);
           return imdbIdMatch[0];
         }
       }
       
-      // Fallback: try to find IMDB ID pattern directly (tt followed by 7+ digits)
-      // But be more careful - look for it in URLs or links
-      const directPattern = /\btt\d{7,}\b/gi;
-      const directMatches = htmlContent.match(directPattern);
-      if (directMatches && directMatches.length > 0) {
-        // Filter to find the one that looks like an IMDB ID (usually in a URL context)
-        // Look for patterns near "imdb" or in href attributes
-        const imdbContextPattern = /(?:imdb|href[^>]*title[^>]*)(?:[^>]*>)?[^<]*?(tt\d{7,})/gi;
-        const contextMatches = htmlContent.match(imdbContextPattern);
-        if (contextMatches && contextMatches.length > 0) {
-          const idMatch = contextMatches[0].match(/tt\d{7,}/i);
-          if (idMatch) {
-            console.log(`  Found IMDB ID ${idMatch[0]} via DuckDuckGo search (context pattern) for: "${query}"`);
-            return idMatch[0];
+      // Pattern 3: Look for IMDB ID near "imdb" text in the HTML
+      const imdbTextPattern = /imdb[^<]*?(tt\d{7,})/gi;
+      const textMatches = htmlContent.match(imdbTextPattern);
+      if (textMatches && textMatches.length > 0) {
+        const idMatch = textMatches[0].match(/tt\d{7,}/i);
+        if (idMatch) {
+          console.log(`  Found IMDB ID ${idMatch[0]} via DuckDuckGo search (text pattern) for: "${query}"`);
+          return idMatch[0];
+        }
+      }
+      
+      // Pattern 4: Find any tt\d{7,} pattern and check if it's in an IMDB-related context
+      const allTtPattern = /\btt\d{7,}\b/gi;
+      const allMatches: string[] = [];
+      let match;
+      while ((match = allTtPattern.exec(htmlContent)) !== null) {
+        allMatches.push(match[0]);
+      }
+      
+      if (allMatches.length > 0) {
+        // Check each match to see if it's near "imdb" text
+        for (const ttId of allMatches) {
+          const contextStart = Math.max(0, htmlContent.indexOf(ttId) - 200);
+          const contextEnd = Math.min(htmlContent.length, htmlContent.indexOf(ttId) + 200);
+          const context = htmlContent.substring(contextStart, contextEnd).toLowerCase();
+          
+          if (context.includes('imdb') || context.includes('title')) {
+            console.log(`  Found IMDB ID ${ttId} via DuckDuckGo search (context check) for: "${query}"`);
+            return ttId;
           }
         }
-        // If no context match, use the first direct match
-        console.log(`  Found IMDB ID ${directMatches[0]} via DuckDuckGo search (direct pattern) for: "${query}"`);
-        return directMatches[0];
+        
+        // If no context match but we have matches, use the first one (might be IMDB ID)
+        console.log(`  Found potential IMDB ID ${allMatches[0]} via DuckDuckGo search (fallback) for: "${query}"`);
+        return allMatches[0];
       }
       
       console.log(`  No IMDB ID found in DuckDuckGo search results for: "${query}" (response length: ${htmlContent.length})`);
