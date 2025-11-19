@@ -32,8 +32,18 @@ router.post('/:id/add', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Release not found' });
     }
 
-    if (release.status !== 'NEW') {
-      return res.status(400).json({ error: 'Release is not in NEW status' });
+    // Allow adding if status is NEW or ATTENTION_NEEDED (both are "new" movies not in Radarr)
+    if (release.status !== 'NEW' && release.status !== 'ATTENTION_NEEDED') {
+      return res.status(400).json({ 
+        error: `Release is not in NEW status (current status: ${release.status})` 
+      });
+    }
+    
+    // Also check if movie already exists in Radarr
+    if (release.radarr_movie_id) {
+      return res.status(400).json({ 
+        error: 'Movie already exists in Radarr. Use upgrade instead.' 
+      });
     }
 
     if (!release.tmdb_id) {
