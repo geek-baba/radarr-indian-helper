@@ -31,20 +31,25 @@ function extractMovieNameAndYear(normalizedTitle: string, year?: number): string
   // Remove year if it's embedded (we'll add it back at the end)
   clean = clean.replace(/\b(19|20)\d{2}\b/g, '');
   
-  // Remove common quality/resolution patterns
+  // Remove common quality/resolution patterns (with or without spaces)
   clean = clean.replace(/\b(2160p|1080p|720p|480p|4k|uhd|fhd|hd|sd)\b/gi, '');
   
-  // Remove codec patterns
-  clean = clean.replace(/\b(x264|x265|h264|h265|hevc|avc|h\.?264|h\.?265)\b/gi, '');
+  // Remove codec patterns (handle spaces: "h 264", "h 265", "h264", "h.264", etc.)
+  clean = clean.replace(/\b(x264|x265|h\s*\.?\s*264|h\s*\.?\s*265|h264|h265|hevc|avc)\b/gi, '');
   
-  // Remove source tags
-  clean = clean.replace(/\b(amzn|netflix|nf|jc|jiocinema|zee5|dsnp|disney|hotstar|hs|ss|webdl|web dl|webrip|bluray|dvdrip)\b/gi, '');
+  // Remove source tags (handle spaces: "web dl", "webdl", etc.)
+  clean = clean.replace(/\b(amzn|netflix|nf|jc|jiocinema|zee5|dsnp|disney|hotstar|hs|ss|web\s*dl|webdl|webrip|bluray|dvdrip)\b/gi, '');
   
-  // Remove audio patterns
-  clean = clean.replace(/\b(dd\+?|ddp|eac3|ac3|atmos|truehd|dts|aac|stereo|5\.1|7\.1|2\.0)\b/gi, '');
+  // Remove audio patterns (handle spaces: "5 1", "5.1", "dd +", etc.)
+  clean = clean.replace(/\b(dd\s*\+?\s*|ddp|eac3|ac3|atmos|truehd|dts|aac|stereo|5\s*\.?\s*1|7\s*\.?\s*1|2\s*\.?\s*0)\b/gi, '');
   
-  // Remove common release group patterns (usually at the end)
-  clean = clean.replace(/\b([a-z0-9]{2,8}[-_][a-z0-9]{2,8}|[a-z]{2,8}\d{1,3})\b/gi, '');
+  // Remove common release group patterns (usually at the end: "dtr", "khn", "DTR-KHN", etc.)
+  // Match 2-4 letter groups, optionally with dashes/underscores
+  clean = clean.replace(/\b([a-z]{2,4}(?:[-_][a-z]{2,4})?)\b/gi, '');
+  
+  // Remove any remaining large numbers that are likely quality-related (like "264", "265", etc.)
+  // But keep single digits that might be part of movie titles (like "Nishaanchi 2")
+  clean = clean.replace(/\b\d{3,}\b/g, '');
   
   // Remove extra whitespace and trim
   clean = clean.replace(/\s+/g, ' ').trim();
