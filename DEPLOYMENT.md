@@ -1,10 +1,31 @@
-# Deployment Instructions
+# Deployment Guide
 
-## Docker Deployment Command
+## Quick Deploy Script
 
-Use this command to deploy the radarr-indian-helper container:
+A deployment script is available at `deploy.sh` that automatically:
+1. Checks the latest GitHub Actions run
+2. Waits for it to complete if in progress
+3. Deploys the latest image if the run succeeded
+
+### Usage
 
 ```bash
+./deploy.sh
+```
+
+### Manual Deployment
+
+If you prefer to deploy manually:
+
+```bash
+# Stop and remove existing container
+docker stop radarr-indian-helper
+docker rm radarr-indian-helper
+
+# Pull latest image
+docker pull ghcr.io/geek-baba/radarr-indian-helper:latest
+
+# Run new container
 docker run -d \
   --name radarr-indian-helper \
   -p 8085:8085 \
@@ -14,51 +35,49 @@ docker run -d \
   ghcr.io/geek-baba/radarr-indian-helper:latest
 ```
 
-## Useful Commands
+## Automatic Deployment
 
-### View Logs
+### Option 1: Run Script After Each Push
+
+After pushing to GitHub, run:
+```bash
+./deploy.sh
+```
+
+### Option 2: Set Up a Cron Job (macOS)
+
+To automatically check and deploy every 5 minutes:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add this line (adjust path as needed)
+*/5 * * * * cd /Users/shwet/github/movies\&tvshows && ./deploy.sh >> /tmp/radarr-deploy.log 2>&1
+```
+
+### Option 3: GitHub Actions Webhook (Advanced)
+
+For true automatic deployment, you can set up a webhook that triggers on successful workflow completion. This requires:
+1. A webhook endpoint (e.g., using a simple HTTP server)
+2. GitHub webhook configuration
+3. The webhook calls the deploy script
+
+## Monitoring
+
+Check container status:
+```bash
+docker ps --filter name=radarr-indian-helper
+```
+
+View logs:
 ```bash
 docker logs -f radarr-indian-helper
 ```
 
-### Stop Container
-```bash
-docker stop radarr-indian-helper
-```
+## Troubleshooting
 
-### Remove Container (keeps data)
-```bash
-docker rm radarr-indian-helper
-```
-
-### Restart Container
-```bash
-docker restart radarr-indian-helper
-```
-
-### Pull Latest Image
-```bash
-docker pull ghcr.io/geek-baba/radarr-indian-helper:latest
-```
-
-### Update to Latest Image
-```bash
-docker stop radarr-indian-helper
-docker rm radarr-indian-helper
-docker pull ghcr.io/geek-baba/radarr-indian-helper:latest
-# Then run the deployment command above
-```
-
-## Data Persistence
-
-The database and all settings are stored in the mounted volume: `/Users/shwet/my_daily_chore`
-
-This directory contains:
-- `app.db` - SQLite database with all releases, feeds, and settings
-- Any other application data
-
-## Access
-
-- Dashboard: http://localhost:8085
-- Settings: http://localhost:8085/settings
-
+If deployment fails:
+1. Check GitHub Actions status: `gh run list --limit 1`
+2. Check container logs: `docker logs radarr-indian-helper`
+3. Verify image exists: `docker images ghcr.io/geek-baba/radarr-indian-helper:latest`
