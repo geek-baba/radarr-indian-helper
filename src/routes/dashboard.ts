@@ -215,11 +215,15 @@ router.get('/', async (req: Request, res: Response) => {
         }
       }
       
+      // Extract IMDB ID from any release in the group
+      const imdbIdFromRelease = releases.find(r => r.imdb_id)?.imdb_id;
+      
       movieGroups.push({
         movieKey,
         movieTitle,
         tmdbId: primaryRelease.tmdb_id,
         radarrMovieId: primaryRelease.radarr_movie_id,
+        imdbId: imdbIdFromRelease, // Add IMDB ID from releases
         radarrInfo, // Add Radarr info to the movie group
         add,
         existing,
