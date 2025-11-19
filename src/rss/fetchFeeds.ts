@@ -390,13 +390,22 @@ export async function fetchAndProcessFeeds(): Promise<void> {
               
               // First try OMDB API
               console.log(`  TMDB not found, searching IMDB/OMDB for: "${searchTitle}" (${searchYear || 'no year'})`);
-              const imdbResult = await imdbClient.searchMovie(searchTitle, searchYear);
-              if (imdbResult) {
-                imdbId = imdbResult.imdbId;
-                console.log(`  Found IMDB ID ${imdbId} via OMDB search: ${imdbResult.title} (${imdbResult.year})`);
-                needsAttention = true; // Mark as attention needed since no TMDB match
-              } else {
-                // If OMDB didn't find it, try DuckDuckGo search as fallback
+              let omdbSucceeded = false;
+              try {
+                const imdbResult = await imdbClient.searchMovie(searchTitle, searchYear);
+                if (imdbResult) {
+                  imdbId = imdbResult.imdbId;
+                  console.log(`  Found IMDB ID ${imdbId} via OMDB search: ${imdbResult.title} (${imdbResult.year})`);
+                  needsAttention = true; // Mark as attention needed since no TMDB match
+                  omdbSucceeded = true;
+                }
+              } catch (omdbError: any) {
+                // OMDB might fail due to API key or rate limits - continue to DuckDuckGo
+                console.log(`  OMDB search failed or returned no results: ${omdbError?.message || 'Unknown error'}`);
+              }
+              
+              // If OMDB didn't find it or failed, try DuckDuckGo search as fallback
+              if (!omdbSucceeded && !imdbId) {
                 // Use "clean title yyyy tmdb" format for web search
                 let webSearchQuery = searchTitle;
                 if (searchYear) {
@@ -404,12 +413,18 @@ export async function fetchAndProcessFeeds(): Promise<void> {
                 } else {
                   webSearchQuery = `${searchTitle} tmdb`;
                 }
-                console.log(`  OMDB not found, searching DuckDuckGo for IMDB ID: "${webSearchQuery}"`);
-                const googleImdbId = await imdbClient.searchGoogleForImdbId(searchTitle, searchYear);
-                if (googleImdbId) {
-                  imdbId = googleImdbId;
-                  console.log(`  Found IMDB ID ${imdbId} via Google search`);
-                  needsAttention = true; // Mark as attention needed since no TMDB match
+                console.log(`  OMDB not found/failed, searching DuckDuckGo for IMDB ID: "${webSearchQuery}"`);
+                try {
+                  const googleImdbId = await imdbClient.searchGoogleForImdbId(searchTitle, searchYear);
+                  if (googleImdbId) {
+                    imdbId = googleImdbId;
+                    console.log(`  Found IMDB ID ${imdbId} via DuckDuckGo search`);
+                    needsAttention = true; // Mark as attention needed since no TMDB match
+                  } else {
+                    console.log(`  DuckDuckGo search did not find IMDB ID`);
+                  }
+                } catch (ddgError) {
+                  console.error(`  DuckDuckGo search error:`, ddgError);
                 }
               }
             } catch (error) {
