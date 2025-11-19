@@ -170,6 +170,7 @@ router.get('/', async (req: Request, res: Response) => {
       posterUrl?: string;
       imdbId?: string;
       originalLanguage?: string;
+      radarrInfo?: any;
       add: any[];
       existing: any[];
       upgrade: any[];
