@@ -12,11 +12,13 @@ router.get('/', async (req: Request, res: Response) => {
     const qualitySettings = settingsModel.getQualitySettings();
     const allSettings = settingsModel.getAll();
     const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value || '';
+    const omdbApiKey = allSettings.find(s => s.key === 'omdb_api_key')?.value || '';
 
     res.render('settings', {
       feeds,
       qualitySettings,
       tmdbApiKey,
+      omdbApiKey,
     });
   } catch (error) {
     console.error('Settings page error:', error);
@@ -147,6 +149,17 @@ router.post('/tmdb-api-key', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Save TMDB API key error:', error);
     res.status(500).json({ error: 'Failed to save TMDB API key' });
+  }
+});
+
+router.post('/omdb-api-key', (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.body;
+    settingsModel.set('omdb_api_key', apiKey || '');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Save OMDB API key error:', error);
+    res.status(500).json({ error: 'Failed to save OMDB API key' });
   }
 });
 

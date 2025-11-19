@@ -77,7 +77,7 @@
         </p>
       </div>
 
-      <div class="bg-blue-50 border border-blue-200 rounded p-4">
+      <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-4">
         <h4 class="font-semibold mb-2">TMDB API Key</h4>
         <p class="text-sm text-blue-800 mb-3">
           Optional: Add your TMDB API key to enable poster fetching and movie lookup for releases without TMDB ID.
@@ -93,6 +93,27 @@
             class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
           <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+            Save
+          </button>
+        </form>
+      </div>
+
+      <div class="bg-green-50 border border-green-200 rounded p-4">
+        <h4 class="font-semibold mb-2">OMDB API Key</h4>
+        <p class="text-sm text-green-800 mb-3">
+          Optional: Add your OMDB API key for higher rate limits when searching for IMDB IDs. Free tier works without a key but has rate limits.
+          Get your API key from <a href="http://www.omdbapi.com/apikey.aspx" target="_blank" class="underline">OMDB API</a>.
+        </p>
+        <form onsubmit="saveOmdbApiKey(event)" class="flex gap-2">
+          <input 
+            type="text" 
+            id="omdbApiKey" 
+            name="omdbApiKey" 
+            value="<%= omdbApiKey %>" 
+            placeholder="Enter OMDB API Key (optional)"
+            class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+          <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
             Save
           </button>
         </form>
@@ -259,25 +280,45 @@
   </div>
 
   <script>
-    async function saveTmdbApiKey(event) {
-      event.preventDefault();
-      const apiKey = document.getElementById('tmdbApiKey').value;
-      try {
-        const res = await fetch('/settings/tmdb-api-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert('TMDB API key saved successfully!');
-        } else {
-          alert('Error: ' + (data.error || 'Unknown error'));
-        }
-      } catch (error) {
-        alert('Error: ' + error.message);
-      }
-    }
+            async function saveTmdbApiKey(event) {
+              event.preventDefault();
+              const apiKey = document.getElementById('tmdbApiKey').value;
+              try {
+                const res = await fetch('/settings/tmdb-api-key', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ apiKey }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  alert('TMDB API key saved successfully!');
+                } else {
+                  alert('Error: ' + (data.error || 'Unknown error'));
+                }
+              } catch (error) {
+                alert('Error: ' + error.message);
+              }
+            }
+
+            async function saveOmdbApiKey(event) {
+              event.preventDefault();
+              const apiKey = document.getElementById('omdbApiKey').value;
+              try {
+                const res = await fetch('/settings/omdb-api-key', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ apiKey }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  alert('OMDB API key saved successfully!');
+                } else {
+                  alert('Error: ' + (data.error || 'Unknown error'));
+                }
+              } catch (error) {
+                alert('Error: ' + error.message);
+              }
+            }
     let editingFeedId = null;
 
     function showAddFeedModal() {

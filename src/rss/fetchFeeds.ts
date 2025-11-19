@@ -115,20 +115,31 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             }
           }
           
-          // If TMDB search didn't find a match, try IMDB/OMDB search
+          // If TMDB search didn't find a match, try IMDB/OMDB search, then Google search
           if (!tmdbId && (parsed as any).clean_title) {
             try {
               const searchTitle = (parsed as any).clean_title;
               const searchYear = parsed.year;
+              
+              // First try OMDB API
               console.log(`  TMDB not found, searching IMDB/OMDB for: "${searchTitle}" (${searchYear || 'no year'})`);
               const imdbResult = await imdbClient.searchMovie(searchTitle, searchYear);
               if (imdbResult) {
                 imdbId = imdbResult.imdbId;
                 console.log(`  Found IMDB ID ${imdbId} via OMDB search: ${imdbResult.title} (${imdbResult.year})`);
                 needsAttention = true; // Mark as attention needed since no TMDB match
+              } else {
+                // If OMDB didn't find it, try Google search as fallback
+                console.log(`  OMDB not found, searching Google for IMDB ID: "${searchTitle}" (${searchYear || 'no year'})`);
+                const googleImdbId = await imdbClient.searchGoogleForImdbId(searchTitle, searchYear);
+                if (googleImdbId) {
+                  imdbId = googleImdbId;
+                  console.log(`  Found IMDB ID ${imdbId} via Google search`);
+                  needsAttention = true; // Mark as attention needed since no TMDB match
+                }
               }
             } catch (error) {
-              console.error(`  IMDB/OMDB search error for "${(parsed as any).clean_title}":`, error);
+              console.error(`  IMDB/OMDB/Google search error for "${(parsed as any).clean_title}":`, error);
             }
           }
 
@@ -226,20 +237,31 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             }
           }
           
-          // If TMDB search still didn't find a match, try IMDB/OMDB search (for allowed releases)
+          // If TMDB search still didn't find a match, try IMDB/OMDB search, then Google search (for allowed releases)
           if (!tmdbId && (parsed as any).clean_title) {
             try {
               const searchTitle = (parsed as any).clean_title;
               const searchYear = parsed.year;
+              
+              // First try OMDB API
               console.log(`  TMDB not found, searching IMDB/OMDB for: "${searchTitle}" (${searchYear || 'no year'})`);
               const imdbResult = await imdbClient.searchMovie(searchTitle, searchYear);
               if (imdbResult) {
                 imdbId = imdbResult.imdbId;
                 console.log(`  Found IMDB ID ${imdbId} via OMDB search: ${imdbResult.title} (${imdbResult.year})`);
                 needsAttention = true; // Mark as attention needed since no TMDB match
+              } else {
+                // If OMDB didn't find it, try Google search as fallback
+                console.log(`  OMDB not found, searching Google for IMDB ID: "${searchTitle}" (${searchYear || 'no year'})`);
+                const googleImdbId = await imdbClient.searchGoogleForImdbId(searchTitle, searchYear);
+                if (googleImdbId) {
+                  imdbId = googleImdbId;
+                  console.log(`  Found IMDB ID ${imdbId} via Google search`);
+                  needsAttention = true; // Mark as attention needed since no TMDB match
+                }
               }
             } catch (error) {
-              console.error(`  IMDB/OMDB search error for "${(parsed as any).clean_title}":`, error);
+              console.error(`  IMDB/OMDB/Google search error for "${(parsed as any).clean_title}":`, error);
             }
           }
 
