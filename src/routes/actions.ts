@@ -62,19 +62,36 @@ router.post('/:id/add', async (req: Request, res: Response) => {
       });
     }
 
-    // Lookup movie by TMDB ID directly (more reliable than title search)
-    let movie = await radarrClient.lookupMovieByTmdbId(release.tmdb_id);
+    // Lookup movie - try TMDB ID first if available, otherwise use title
+    let movie = null;
     
-    // Fallback to title lookup if TMDB ID lookup fails
-    if (!movie) {
-      console.log(`TMDB ID lookup failed for ${release.tmdb_id}, trying title lookup...`);
+    if (release.tmdb_id) {
+      // Lookup movie by TMDB ID directly (more reliable than title search)
+      movie = await radarrClient.lookupMovieByTmdbId(release.tmdb_id);
+      
+      // Fallback to title lookup if TMDB ID lookup fails
+      if (!movie) {
+        console.log(`TMDB ID lookup failed for ${release.tmdb_id}, trying title lookup...`);
+        const lookupResults = await radarrClient.lookupMovie(release.tmdb_title || release.title);
+        movie = lookupResults.find((m) => m.tmdbId === release.tmdb_id) || null;
+      }
+    } else {
+      // For ATTENTION_NEEDED releases without TMDB ID, try title lookup
+      console.log(`No TMDB ID, trying title lookup for: ${release.tmdb_title || release.title}`);
       const lookupResults = await radarrClient.lookupMovie(release.tmdb_title || release.title);
-      movie = lookupResults.find((m) => m.tmdbId === release.tmdb_id) || null;
+      if (lookupResults.length > 0) {
+        // Take the first result, or try to match by year if available
+        if (release.year) {
+          movie = lookupResults.find((m) => m.year === release.year) || lookupResults[0];
+        } else {
+          movie = lookupResults[0];
+        }
+      }
     }
 
     if (!movie) {
       return res.status(404).json({ 
-        error: `Movie not found in Radarr lookup for TMDB ID ${release.tmdb_id}` 
+        error: `Movie not found in Radarr lookup. ${release.tmdb_id ? `TMDB ID: ${release.tmdb_id}` : `Title: ${release.tmdb_title || release.title}`}` 
       });
     }
 
