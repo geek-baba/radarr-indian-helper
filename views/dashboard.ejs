@@ -39,12 +39,20 @@
             { key: 'lastWeek', label: 'Last Week', count: movieGroupsByPeriod.lastWeek?.length || 0 },
             { key: 'older', label: 'Older', count: movieGroupsByPeriod.older?.length || 0 }
           ]; %>
+          <% 
+            let firstVisibleIndex = -1;
+            periods.forEach((period, index) => {
+              if (period.count > 0 && firstVisibleIndex === -1) {
+                firstVisibleIndex = index;
+              }
+            });
+          %>
           <% periods.forEach((period, index) => { %>
             <% if (period.count > 0) { %>
               <button 
                 onclick="showTimePeriod('<%= period.key %>')" 
                 id="tab-<%= period.key %>"
-                class="<%= index === 0 ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-4 px-1 border-b-2 font-medium text-sm"
+                class="<%= index === firstVisibleIndex ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-4 px-1 border-b-2 font-medium text-sm"
               >
                 <%= period.label %> (<%= period.count %>)
               </button>
@@ -54,9 +62,9 @@
       </div>
 
       <!-- Time Period Sections -->
-      <% periods.forEach(period => { %>
+      <% periods.forEach((period, index) => { %>
         <% if (movieGroupsByPeriod[period.key] && movieGroupsByPeriod[period.key].length > 0) { %>
-          <div id="period-<%= period.key %>" class="time-period-section <%= period.key === 'today' ? '' : 'hidden' %>">
+          <div id="period-<%= period.key %>" class="time-period-section <%= index === firstVisibleIndex ? '' : 'hidden' %>">
             <% movieGroupsByPeriod[period.key].forEach(movie => { %>
         <div class="mb-8 bg-white rounded-lg shadow">
           <!-- Movie Header: Single poster and metadata -->
