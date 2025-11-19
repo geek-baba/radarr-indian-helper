@@ -295,14 +295,118 @@
     <% } %>
   </main>
 
+  <!-- Add Movie Modal -->
+  <div id="addMovieModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+      <h3 class="text-xl font-semibold mb-4">Add Movie to Radarr</h3>
+      <form id="addMovieForm" onsubmit="submitAddMovie(event)">
+        <input type="hidden" id="addMovieReleaseId" name="releaseId">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Quality Profile:</label>
+          <select id="qualityProfileSelect" name="qualityProfileId" required class="w-full border rounded px-2 py-1">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Root Folder:</label>
+          <select id="rootFolderSelect" name="rootFolderPath" required class="w-full border rounded px-2 py-1">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="hideAddMovieModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+            Cancel
+          </button>
+          <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+            Add to Radarr
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    async function addMovie(id) {
-      if (!confirm('Add this movie to Radarr?')) return;
+    let currentReleaseId = null;
+    let radarrOptions = null;
+
+    async function loadRadarrOptions() {
+      if (radarrOptions) return radarrOptions;
+      
       try {
-        const res = await fetch(`/actions/${id}/add`, { method: 'POST' });
+        const res = await fetch('/actions/radarr-options');
         const data = await res.json();
         if (data.success) {
-          alert('Movie added to Radarr!');
+          radarrOptions = data;
+          return data;
+        } else {
+          throw new Error(data.error || 'Failed to load options');
+        }
+      } catch (error) {
+        console.error('Error loading Radarr options:', error);
+        alert('Error loading Radarr options: ' + error.message);
+        return null;
+      }
+    }
+
+    async function addMovie(id) {
+      currentReleaseId = id;
+      
+      // Load Radarr options
+      const options = await loadRadarrOptions();
+      if (!options) return;
+
+      // Populate quality profiles
+      const qualitySelect = document.getElementById('qualityProfileSelect');
+      qualitySelect.innerHTML = '';
+      options.qualityProfiles.forEach(profile => {
+        const option = document.createElement('option');
+        option.value = profile.id;
+        option.textContent = profile.name;
+        qualitySelect.appendChild(option);
+      });
+
+      // Populate root folders
+      const rootFolderSelect = document.getElementById('rootFolderSelect');
+      rootFolderSelect.innerHTML = '';
+      options.rootFolders.forEach(folder => {
+        const option = document.createElement('option');
+        option.value = folder.path;
+        option.textContent = folder.path;
+        rootFolderSelect.appendChild(option);
+      });
+
+      // Show modal
+      document.getElementById('addMovieModal').classList.remove('hidden');
+      document.getElementById('addMovieReleaseId').value = id;
+    }
+
+    function hideAddMovieModal() {
+      document.getElementById('addMovieModal').classList.add('hidden');
+      currentReleaseId = null;
+    }
+
+    async function submitAddMovie(event) {
+      event.preventDefault();
+      
+      const releaseId = document.getElementById('addMovieReleaseId').value;
+      const qualityProfileId = document.getElementById('qualityProfileSelect').value;
+      const rootFolderPath = document.getElementById('rootFolderSelect').value;
+
+      if (!qualityProfileId || !rootFolderPath) {
+        alert('Please select both quality profile and root folder');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/actions/${releaseId}/add`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qualityProfileId, rootFolderPath }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message || 'Movie added to Radarr!');
+          hideAddMovieModal();
           location.reload();
         } else {
           alert('Error: ' + (data.error || 'Unknown error'));

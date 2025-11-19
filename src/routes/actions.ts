@@ -5,6 +5,25 @@ import { Release } from '../types/Release';
 
 const router = Router();
 
+router.get('/radarr-options', async (req: Request, res: Response) => {
+  try {
+    const qualityProfiles = await radarrClient.getQualityProfiles();
+    const rootFolders = await radarrClient.getRootFolders();
+    
+    res.json({
+      success: true,
+      qualityProfiles,
+      rootFolders,
+    });
+  } catch (error: any) {
+    console.error('Get Radarr options error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch Radarr options',
+      details: error?.message || undefined,
+    });
+  }
+});
+
 router.post('/:id/add', async (req: Request, res: Response) => {
   try {
     const release = releasesModel.getById(parseInt(req.params.id, 10));
@@ -19,6 +38,14 @@ router.post('/:id/add', async (req: Request, res: Response) => {
 
     if (!release.tmdb_id) {
       return res.status(400).json({ error: 'TMDB ID not found' });
+    }
+
+    const { qualityProfileId, rootFolderPath } = req.body;
+
+    if (!qualityProfileId || !rootFolderPath) {
+      return res.status(400).json({ 
+        error: 'Quality profile ID and root folder path are required' 
+      });
     }
 
     // Lookup movie by TMDB ID directly (more reliable than title search)
@@ -37,8 +64,8 @@ router.post('/:id/add', async (req: Request, res: Response) => {
       });
     }
 
-    // Add to Radarr
-    const addedMovie = await radarrClient.addMovie(movie);
+    // Add to Radarr with selected options
+    const addedMovie = await radarrClient.addMovie(movie, parseInt(qualityProfileId, 10), rootFolderPath);
 
     // Update release with Radarr movie ID
     const updatedRelease: Omit<Release, 'id'> = {
