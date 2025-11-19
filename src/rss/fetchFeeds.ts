@@ -606,18 +606,18 @@ export async function fetchAndProcessFeeds(): Promise<void> {
                     tmdb_id: tmdbId || lookupResult.tmdbId,
                     tmdb_title: tmdbTitle || lookupResult.title,
                     tmdb_original_language: tmdbOriginalLanguage || originalLang,
-                    imdb_id: imdbId,
-            is_dubbed: isDubbed,
-            radarr_movie_id: radarrMovie.id,
-            radarr_movie_title: radarrMovie.title,
-            existing_size_mb: existingSizeMb,
-            radarr_existing_quality_score: existingScore,
-            new_quality_score: newScore,
-            existing_file_path: existingFile?.relativePath || null,
-            existing_file_attributes: existingFileAttributes ? JSON.stringify(existingFileAttributes) : null,
-            radarr_history: movieWithHistory?.history ? JSON.stringify(movieWithHistory.history.slice(0, 10)) : null, // Store last 10 history items
-            last_checked_at: new Date().toISOString(),
-          };
+                    imdb_id: imdbId || (parsed as any).imdb_id, // Preserve IMDB ID from RSS or web search
+                    is_dubbed: isDubbed,
+                    radarr_movie_id: radarrMovie.id,
+                    radarr_movie_title: radarrMovie.title,
+                    existing_size_mb: existingSizeMb,
+                    radarr_existing_quality_score: existingScore,
+                    new_quality_score: newScore,
+                    existing_file_path: existingFile?.relativePath || null,
+                    existing_file_attributes: existingFileAttributes ? JSON.stringify(existingFileAttributes) : null,
+                    radarr_history: movieWithHistory?.history ? JSON.stringify(movieWithHistory.history.slice(0, 10)) : null, // Store last 10 history items
+                    last_checked_at: new Date().toISOString(),
+                  };
 
           releasesModel.upsert(release);
           processedCount++;
