@@ -252,10 +252,16 @@ router.get('/', async (req: Request, res: Response) => {
               }
             }
             
-            // Get IMDB ID
-            if (movie.imdbId) {
-              movieGroup.imdbId = movie.imdbId;
-            }
+                    // Get IMDB ID (prefer from Radarr, but also check releases)
+                    if (movie.imdbId) {
+                      movieGroup.imdbId = movie.imdbId;
+                    } else if (!movieGroup.imdbId) {
+                      // If not in Radarr, use IMDB ID from releases
+                      const releaseWithImdb = releases.find(r => r.imdb_id);
+                      if (releaseWithImdb?.imdb_id) {
+                        movieGroup.imdbId = releaseWithImdb.imdb_id;
+                      }
+                    }
             
             // Get TMDB ID (already have it, but ensure it's set)
             if (movie.tmdbId) {

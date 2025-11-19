@@ -112,6 +112,7 @@ class IMDBClient {
       
       // Extract IMDB ID from search results
       // Look for patterns like imdb.com/title/tt1234567 or www.imdb.com/title/tt1234567
+      // Also try to find tt\d{7,} pattern directly in case the URL structure is different
       const imdbPattern = /(?:www\.)?imdb\.com\/title\/(tt\d{7,})/gi;
       const matches = response.data.match(imdbPattern);
       
@@ -124,6 +125,16 @@ class IMDBClient {
         }
       }
       
+      // Fallback: try to find IMDB ID pattern directly (tt followed by 7+ digits)
+      const directPattern = /\btt\d{7,}\b/gi;
+      const directMatches = response.data.match(directPattern);
+      if (directMatches && directMatches.length > 0) {
+        // Use the first match
+        console.log(`  Found IMDB ID ${directMatches[0]} via DuckDuckGo search (direct pattern) for: "${query}"`);
+        return directMatches[0];
+      }
+      
+      console.log(`  No IMDB ID found in DuckDuckGo search results for: "${query}"`);
       return null;
     } catch (error) {
       console.error('DuckDuckGo search for IMDB ID error:', error);
