@@ -153,7 +153,7 @@ export const releasesModel = {
   },
 
   updateStatus: (id: number, status: ReleaseStatus): boolean => {
-    const result = db.prepare('UPDATE releases SET status = ?, last_checked_at = datetime("now") WHERE id = ?').run(status, id);
+    const result = db.prepare('UPDATE releases SET status = ?, last_checked_at = datetime(\'now\') WHERE id = ?').run(status, id);
     return result.changes > 0;
   },
 };

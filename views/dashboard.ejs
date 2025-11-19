@@ -5,8 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - Radarr Indian Helper</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+    .toast-enter {
+      animation: slideIn 0.3s ease-out;
+    }
+    .toast-exit {
+      animation: slideOut 0.3s ease-in;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
   <nav class="bg-gray-800 text-white">
     <div class="container mx-auto px-4 py-3">
       <div class="flex justify-between items-center">
@@ -326,6 +356,82 @@
   </div>
 
   <script>
+    // Toast Notification System
+    function showToast(message, type = 'info', duration = 5000) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const bgColors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500',
+      };
+      
+      const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ',
+      };
+      
+      toast.className = `${bgColors[type] || bgColors.info} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 min-w-[300px] max-w-md toast-enter`;
+      toast.innerHTML = `
+        <span class="text-xl font-bold">${icons[type] || icons.info}</span>
+        <span class="flex-1">${message}</span>
+        <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200 font-bold text-xl">&times;</button>
+      `;
+      
+      container.appendChild(toast);
+      
+      // Auto remove after duration
+      setTimeout(() => {
+        toast.classList.remove('toast-enter');
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // Confirmation Dialog System
+    function showConfirm(message, onConfirm, onCancel = null) {
+      const overlay = document.createElement('div');
+      overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      overlay.innerHTML = `
+        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+          <h3 class="text-lg font-semibold mb-4">Confirm</h3>
+          <p class="text-gray-700 mb-6">${message}</p>
+          <div class="flex justify-end space-x-3">
+            <button class="cancel-btn bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+              Cancel
+            </button>
+            <button class="confirm-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+              Confirm
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      overlay.querySelector('.confirm-btn').addEventListener('click', () => {
+        overlay.remove();
+        if (onConfirm) onConfirm();
+      });
+      
+      overlay.querySelector('.cancel-btn').addEventListener('click', () => {
+        overlay.remove();
+        if (onCancel) onCancel();
+      });
+      
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          if (onCancel) onCancel();
+        }
+      });
+    }
+
     let currentReleaseId = null;
     let radarrOptions = null;
 
@@ -448,51 +554,93 @@
     }
 
             async function refreshFeeds() {
-              if (!confirm('Refresh all RSS feeds? This may take a while.')) return;
-              try {
-                const res = await fetch('/settings/refresh', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                  alert('Feed refresh started! The page will refresh in a few seconds.');
-                  setTimeout(() => location.reload(), 5000);
-                } else {
-                  alert('Error: ' + (data.error || 'Unknown error'));
+              showConfirm('Refresh all RSS feeds? This may take a while.', async () => {
+                try {
+                  const res = await fetch('/settings/refresh', { method: 'POST' });
+                  const data = await res.json();
+                  if (data.success) {
+                    showToast('Feed refresh started! The page will refresh in a few seconds.', 'info');
+                    setTimeout(() => location.reload(), 5000);
+                  } else {
+                    showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+                  }
+                } catch (error) {
+                  showToast('Error: ' + error.message, 'error');
                 }
-              } catch (error) {
-                alert('Error: ' + error.message);
-              }
+              });
             }
 
             async function overrideTmdbId(id) {
-              const tmdbId = prompt('Enter TMDB ID to override:');
-              if (!tmdbId || isNaN(parseInt(tmdbId, 10))) {
-                alert('Please enter a valid TMDB ID (numeric)');
-                return;
-              }
+              // Create a modal for TMDB ID input
+              const overlay = document.createElement('div');
+              overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+              overlay.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                  <h3 class="text-lg font-semibold mb-4">Override TMDB ID</h3>
+                  <input type="text" id="tmdbIdInput" placeholder="Enter TMDB ID" class="w-full border rounded px-3 py-2 mb-4" autofocus>
+                  <div class="flex justify-end space-x-3">
+                    <button class="cancel-tmdb-btn bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                      Cancel
+                    </button>
+                    <button class="confirm-tmdb-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                      Override
+                    </button>
+                  </div>
+                </div>
+              `;
               
-              if (!confirm(`Override TMDB ID to ${tmdbId}?`)) return;
+              document.body.appendChild(overlay);
               
-              try {
-                const res = await fetch(`/actions/${id}/override-tmdb`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ tmdbId }),
-                });
-                const data = await res.json();
-                if (data.success) {
-                  alert(`TMDB ID updated to ${tmdbId} (${data.tmdbTitle || ''})`);
-                  location.reload();
-                } else {
-                  alert('Error: ' + (data.error || 'Unknown error'));
+              const input = overlay.querySelector('#tmdbIdInput');
+              input.focus();
+              
+              overlay.querySelector('.confirm-tmdb-btn').addEventListener('click', async () => {
+                const tmdbId = input.value.trim();
+                if (!tmdbId || isNaN(parseInt(tmdbId, 10))) {
+                  showToast('Please enter a valid TMDB ID (numeric)', 'warning');
+                  return;
                 }
-              } catch (error) {
-                alert('Error: ' + error.message);
-              }
+                
+                overlay.remove();
+                
+                showConfirm(`Override TMDB ID to ${tmdbId}?`, async () => {
+                  try {
+                    const res = await fetch(`/actions/${id}/override-tmdb`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tmdbId }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      showToast(`TMDB ID updated to ${tmdbId} (${data.tmdbTitle || ''})`, 'success');
+                      setTimeout(() => location.reload(), 1500);
+                    } else {
+                      showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+                    }
+                  } catch (error) {
+                    showToast('Error: ' + error.message, 'error');
+                  }
+                });
+              });
+              
+              overlay.querySelector('.cancel-tmdb-btn').addEventListener('click', () => {
+                overlay.remove();
+              });
+              
+              overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.remove();
+              });
+              
+              input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                  overlay.querySelector('.confirm-tmdb-btn').click();
+                }
+              });
             }
 
             async function overrideTmdbIdForMovie(releaseId) {
               if (!releaseId || releaseId === 0) {
-                alert('No release found for this movie. Please use the Override TMDB button on a specific release.');
+                showToast('No release found for this movie. Please use the Override TMDB button on a specific release.', 'warning');
                 return;
               }
               await overrideTmdbId(releaseId);
