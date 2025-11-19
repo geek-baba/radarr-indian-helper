@@ -6,6 +6,7 @@ import { settingsModel } from '../models/settings';
 import { isReleaseAllowed, computeQualityScore } from '../scoring/qualityScore';
 import { parseReleaseFromTitle } from '../scoring/parseFromTitle';
 import radarrClient from '../radarr/client';
+import tmdbClient from '../tmdb/client';
 import { Release } from '../types/Release';
 import { QualitySettings } from '../types/QualitySettings';
 
@@ -14,6 +15,13 @@ const parser = new Parser();
 export async function fetchAndProcessFeeds(): Promise<void> {
   const feeds = feedsModel.getEnabled();
   const settings = settingsModel.getQualitySettings();
+  
+  // Get TMDB API key from settings
+  const allSettings = settingsModel.getAll();
+  const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value;
+  if (tmdbApiKey) {
+    tmdbClient.setApiKey(tmdbApiKey);
+  }
 
   console.log(`Fetching ${feeds.length} enabled RSS feeds...`);
 
@@ -56,12 +64,38 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           const allowed = isReleaseAllowed(parsed.parsed, settings);
           
           let status: Release['status'] = allowed ? 'NEW' : 'IGNORED';
+          
+          // Try to get TMDB ID even for IGNORED releases (for better matching)
+          let tmdbId = (parsed as any).tmdb_id;
+          let tmdbTitle: string | undefined;
+          let tmdbOriginalLanguage: string | undefined;
+          
+          // If we don't have a TMDB ID but have a title, try TMDB API search
+          if (!tmdbId && tmdbApiKey && (parsed as any).clean_title) {
+            try {
+              const searchTitle = (parsed as any).clean_title;
+              const searchYear = parsed.year;
+              console.log(`  Searching TMDB API for: "${searchTitle}" (${searchYear || 'no year'})`);
+              const tmdbMovie = await tmdbClient.searchMovie(searchTitle, searchYear);
+              if (tmdbMovie) {
+                tmdbId = tmdbMovie.id;
+                tmdbTitle = tmdbMovie.title;
+                tmdbOriginalLanguage = tmdbMovie.original_language;
+                console.log(`  Found TMDB ID ${tmdbId} via API search: ${tmdbTitle}`);
+              }
+            } catch (error) {
+              console.error(`  TMDB API search error for "${(parsed as any).clean_title}":`, error);
+            }
+          }
 
-          // If not allowed, just save as IGNORED
+          // If not allowed, save as IGNORED but still include TMDB info if we found it
           if (!allowed) {
             const release: Omit<Release, 'id'> = {
               ...parsed,
               status,
+              tmdb_id: tmdbId,
+              tmdb_title: tmdbTitle,
+              tmdb_original_language: tmdbOriginalLanguage,
               last_checked_at: new Date().toISOString(),
             };
             releasesModel.upsert(release);
@@ -70,14 +104,14 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           }
 
           // For allowed releases, lookup in Radarr
-          // First, try to use TMDB ID if we extracted it from the RSS feed
+          // First, try to use TMDB ID if we have it (from RSS or API search)
           let radarrMovie: any = null;
           let lookupResult: any = null;
 
-          if ((parsed as any).tmdb_id) {
+          if (tmdbId) {
             // Direct lookup by TMDB ID - this is more reliable
-            console.log(`  Looking up movie by TMDB ID: ${(parsed as any).tmdb_id} for: ${parsed.title}`);
-            radarrMovie = await radarrClient.getMovie((parsed as any).tmdb_id);
+            console.log(`  Looking up movie by TMDB ID: ${tmdbId} for: ${parsed.title}`);
+            radarrMovie = await radarrClient.getMovie(tmdbId);
             if (radarrMovie && radarrMovie.id) {
               console.log(`  Found movie in Radarr by TMDB ID: ${radarrMovie.title} (ID: ${radarrMovie.id})`);
               lookupResult = {
@@ -87,7 +121,39 @@ export async function fetchAndProcessFeeds(): Promise<void> {
                 originalLanguage: radarrMovie.originalLanguage,
               };
             } else {
-              console.log(`  Movie not found in Radarr by TMDB ID: ${(parsed as any).tmdb_id}`);
+              console.log(`  Movie not found in Radarr by TMDB ID: ${tmdbId}`);
+            }
+          }
+          
+          // If we still don't have TMDB ID, try TMDB API search (for allowed releases)
+          if (!tmdbId && tmdbApiKey && (parsed as any).clean_title) {
+            try {
+              const searchTitle = (parsed as any).clean_title;
+              const searchYear = parsed.year;
+              console.log(`  Searching TMDB API for: "${searchTitle}" (${searchYear || 'no year'})`);
+              const tmdbMovie = await tmdbClient.searchMovie(searchTitle, searchYear);
+              if (tmdbMovie) {
+                tmdbId = tmdbMovie.id;
+                tmdbTitle = tmdbMovie.title;
+                tmdbOriginalLanguage = tmdbMovie.original_language;
+                console.log(`  Found TMDB ID ${tmdbId} via API search: ${tmdbTitle}`);
+                
+                // Try Radarr lookup again with the TMDB ID we just found
+                if (!radarrMovie || !radarrMovie.id) {
+                  radarrMovie = await radarrClient.getMovie(tmdbId);
+                  if (radarrMovie && radarrMovie.id) {
+                    console.log(`  Found movie in Radarr by TMDB ID (from API): ${radarrMovie.title} (ID: ${radarrMovie.id})`);
+                    lookupResult = {
+                      tmdbId: radarrMovie.tmdbId,
+                      title: radarrMovie.title,
+                      year: radarrMovie.year,
+                      originalLanguage: radarrMovie.originalLanguage,
+                    };
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(`  TMDB API search error for "${(parsed as any).clean_title}":`, error);
             }
           }
 
@@ -104,17 +170,19 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             if (lookupResults.length === 0) {
               // No movie found in Radarr - mark as NEW
               // But first, try to get TMDB ID from lookup results if available
-              const release: Omit<Release, 'id'> = {
-                ...parsed,
-                status: 'NEW',
-                tmdb_id: (parsed as any).tmdb_id, // Keep TMDB ID if we extracted it
-                last_checked_at: new Date().toISOString(),
-              };
-              releasesModel.upsert(release);
-              newCount++;
-              processedCount++;
-              continue;
-            }
+                  const release: Omit<Release, 'id'> = {
+                    ...parsed,
+                    status: 'NEW',
+                    tmdb_id: tmdbId || (parsed as any).tmdb_id, // Use TMDB ID from API search or RSS
+                    tmdb_title: tmdbTitle,
+                    tmdb_original_language: tmdbOriginalLanguage,
+                    last_checked_at: new Date().toISOString(),
+                  };
+                  releasesModel.upsert(release);
+                  newCount++;
+                  processedCount++;
+                  continue;
+                }
 
             // Use first lookup result
             lookupResult = lookupResults[0];
@@ -126,9 +194,9 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             const release: Omit<Release, 'id'> = {
               ...parsed,
               status: 'NEW',
-              tmdb_id: lookupResult.tmdbId,
-              tmdb_title: lookupResult.title,
-              tmdb_original_language: lookupResult.originalLanguage?.name,
+              tmdb_id: tmdbId || lookupResult?.tmdbId,
+              tmdb_title: tmdbTitle || lookupResult?.title,
+              tmdb_original_language: tmdbOriginalLanguage || lookupResult?.originalLanguage?.name,
               last_checked_at: new Date().toISOString(),
             };
             releasesModel.upsert(release);
@@ -312,12 +380,12 @@ export async function fetchAndProcessFeeds(): Promise<void> {
             } : null,
           } : null;
 
-          const release: any = {
-            ...parsed,
-            status,
-            tmdb_id: lookupResult.tmdbId,
-            tmdb_title: lookupResult.title,
-            tmdb_original_language: originalLang,
+                  const release: any = {
+                    ...parsed,
+                    status,
+                    tmdb_id: tmdbId || lookupResult.tmdbId,
+                    tmdb_title: tmdbTitle || lookupResult.title,
+                    tmdb_original_language: tmdbOriginalLanguage || originalLang,
             is_dubbed: isDubbed,
             radarr_movie_id: radarrMovie.id,
             radarr_movie_title: radarrMovie.title,
