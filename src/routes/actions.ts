@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { releasesModel } from '../models/releases';
 import radarrClient from '../radarr/client';
+import { Release } from '../types/Release';
 
 const router = Router();
 

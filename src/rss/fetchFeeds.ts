@@ -81,21 +81,25 @@ export async function fetchAndProcessFeeds(): Promise<void> {
           // Step 1: If RSS feed has IMDB ID but no TMDB ID, try to get TMDB ID from IMDB ID using TMDB API
           if (!tmdbId && (parsed as any).imdb_id && tmdbApiKey) {
             imdbId = (parsed as any).imdb_id;
-            console.log(`  Found IMDB ID ${imdbId} from RSS feed, looking up TMDB ID...`);
-            try {
-              const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
-              if (tmdbMovie) {
-                tmdbId = tmdbMovie.id;
-                tmdbTitle = tmdbMovie.title;
-                tmdbOriginalLanguage = tmdbMovie.original_language;
-                console.log(`  Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}: ${tmdbTitle}`);
-              } else {
-                console.log(`  TMDB ID not found for IMDB ID ${imdbId}, will mark as attention needed`);
+            if (!imdbId) {
+              console.log(`  IMDB ID is undefined, skipping TMDB lookup`);
+            } else {
+              console.log(`  Found IMDB ID ${imdbId} from RSS feed, looking up TMDB ID...`);
+              try {
+                const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                if (tmdbMovie) {
+                  tmdbId = tmdbMovie.id;
+                  tmdbTitle = tmdbMovie.title;
+                  tmdbOriginalLanguage = tmdbMovie.original_language;
+                  console.log(`  Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}: ${tmdbTitle}`);
+                } else {
+                  console.log(`  TMDB ID not found for IMDB ID ${imdbId}, will mark as attention needed`);
+                  needsAttention = true;
+                }
+              } catch (error) {
+                console.error(`  Error looking up TMDB from IMDB ID ${imdbId}:`, error);
                 needsAttention = true;
               }
-            } catch (error) {
-              console.error(`  Error looking up TMDB from IMDB ID ${imdbId}:`, error);
-              needsAttention = true;
             }
           } else if (!tmdbId && (parsed as any).imdb_id) {
             // IMDB ID found but no TMDB API key
