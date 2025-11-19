@@ -363,26 +363,92 @@ router.get('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Sort movie groups by latest release date (most recent first)
-    movieGroups.sort((a, b) => {
-      // Get the most recent published_at date from all releases in each group
-      const getLatestDate = (group: typeof a) => {
-        const allReleases = [...group.add, ...group.existing, ...group.upgrade];
-        if (allReleases.length === 0) return 0;
-        const dates = allReleases.map(r => new Date(r.published_at).getTime());
-        return Math.max(...dates);
-      };
+    // Helper function to get the latest release date from a movie group
+    const getLatestDate = (group: typeof movieGroups[0]) => {
+      const allReleases = [...group.add, ...group.existing, ...group.upgrade];
+      if (allReleases.length === 0) return 0;
+      const dates = allReleases.map(r => new Date(r.published_at).getTime());
+      return Math.max(...dates);
+    };
+
+    // Helper function to categorize a date into time periods
+    const categorizeByTimePeriod = (dateMs: number): string => {
+      const now = Date.now();
+      const date = new Date(dateMs);
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
       
-      const dateA = getLatestDate(a);
-      const dateB = getLatestDate(b);
-      return dateB - dateA; // Descending order (newest first)
-    });
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const thisWeekStart = new Date(today);
+      thisWeekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+      
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      
+      const lastWeekEnd = new Date(thisWeekStart);
+      lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+      lastWeekEnd.setHours(23, 59, 59, 999);
+      
+      if (dateMs >= today.getTime()) {
+        return 'today';
+      } else if (dateMs >= yesterday.getTime()) {
+        return 'yesterday';
+      } else if (dateMs >= thisWeekStart.getTime()) {
+        return 'thisWeek';
+      } else if (dateMs >= lastWeekStart.getTime() && dateMs <= lastWeekEnd.getTime()) {
+        return 'lastWeek';
+      } else {
+        return 'older';
+      }
+    };
+
+    // Helper function to get status priority for sorting (lower number = higher priority)
+    const getStatusPriority = (group: typeof movieGroups[0]): number => {
+      if (group.add.length > 0) return 1; // NEW first
+      if (group.upgrade.length > 0) return 2; // UPGRADE second
+      return 3; // EXISTING/IGNORED last
+    };
+
+    // Filter out movie groups that have no releases to display
+    const filteredMovieGroups = movieGroups.filter(group => group.add.length > 0 || group.existing.length > 0 || group.upgrade.length > 0);
+
+    // Group by time period
+    const groupedByTimePeriod: { [key: string]: typeof movieGroups } = {
+      today: [],
+      yesterday: [],
+      thisWeek: [],
+      lastWeek: [],
+      older: [],
+    };
+
+    for (const group of filteredMovieGroups) {
+      const latestDate = getLatestDate(group);
+      const period = categorizeByTimePeriod(latestDate);
+      groupedByTimePeriod[period].push(group);
+    }
+
+    // Sort within each time period: first by status priority, then by date (newest first)
+    for (const period in groupedByTimePeriod) {
+      groupedByTimePeriod[period].sort((a, b) => {
+        const priorityA = getStatusPriority(a);
+        const priorityB = getStatusPriority(b);
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB; // Lower priority number = higher priority
+        }
+        // If same priority, sort by date (newest first)
+        const dateA = getLatestDate(a);
+        const dateB = getLatestDate(b);
+        return dateB - dateA;
+      });
+    }
 
     // Get Radarr base URL for links
     const radarrBaseUrl = config.radarr.apiUrl.replace('/api/v3', '');
 
     res.render('dashboard', {
-      movieGroups,
+      movieGroupsByPeriod: groupedByTimePeriod,
       radarrBaseUrl,
     });
   } catch (error) {

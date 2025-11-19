@@ -26,10 +26,38 @@
       </button>
     </div>
 
-    <% if (!movieGroups || movieGroups.length === 0) { %>
+    <% if (!movieGroupsByPeriod || Object.keys(movieGroupsByPeriod).every(period => movieGroupsByPeriod[period].length === 0)) { %>
       <p class="text-gray-600">No releases found. Go to Settings to add RSS feeds and refresh.</p>
     <% } else { %>
-      <% movieGroups.forEach(movie => { %>
+      <!-- Time Period Tabs -->
+      <div class="mb-6 border-b border-gray-200">
+        <nav class="flex space-x-8" aria-label="Time Periods">
+          <% const periods = [
+            { key: 'today', label: 'Today', count: movieGroupsByPeriod.today?.length || 0 },
+            { key: 'yesterday', label: 'Yesterday', count: movieGroupsByPeriod.yesterday?.length || 0 },
+            { key: 'thisWeek', label: 'This Week', count: movieGroupsByPeriod.thisWeek?.length || 0 },
+            { key: 'lastWeek', label: 'Last Week', count: movieGroupsByPeriod.lastWeek?.length || 0 },
+            { key: 'older', label: 'Older', count: movieGroupsByPeriod.older?.length || 0 }
+          ]; %>
+          <% periods.forEach((period, index) => { %>
+            <% if (period.count > 0) { %>
+              <button 
+                onclick="showTimePeriod('<%= period.key %>')" 
+                id="tab-<%= period.key %>"
+                class="<%= index === 0 ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-4 px-1 border-b-2 font-medium text-sm"
+              >
+                <%= period.label %> (<%= period.count %>)
+              </button>
+            <% } %>
+          <% }); %>
+        </nav>
+      </div>
+
+      <!-- Time Period Sections -->
+      <% periods.forEach(period => { %>
+        <% if (movieGroupsByPeriod[period.key] && movieGroupsByPeriod[period.key].length > 0) { %>
+          <div id="period-<%= period.key %>" class="time-period-section <%= period.key === 'today' ? '' : 'hidden' %>">
+            <% movieGroupsByPeriod[period.key].forEach(movie => { %>
         <div class="mb-8 bg-white rounded-lg shadow">
           <!-- Movie Header: Single poster and metadata -->
           <div class="p-6 border-b border-gray-200">
@@ -353,6 +381,31 @@
                 return;
               }
               await overrideTmdbId(releaseId);
+            }
+
+            function showTimePeriod(period) {
+              // Hide all time period sections
+              document.querySelectorAll('.time-period-section').forEach(section => {
+                section.classList.add('hidden');
+              });
+              
+              // Show selected time period
+              const selectedSection = document.getElementById(`period-${period}`);
+              if (selectedSection) {
+                selectedSection.classList.remove('hidden');
+              }
+              
+              // Update tab styles
+              document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+                tab.classList.remove('border-blue-500', 'text-blue-600');
+                tab.classList.add('border-transparent', 'text-gray-500');
+              });
+              
+              const selectedTab = document.getElementById(`tab-${period}`);
+              if (selectedTab) {
+                selectedTab.classList.remove('border-transparent', 'text-gray-500');
+                selectedTab.classList.add('border-blue-500', 'text-blue-600');
+              }
             }
   </script>
 </body>
