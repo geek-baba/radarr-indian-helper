@@ -16,6 +16,47 @@ function sanitizeTitle(value: string): string {
     .trim();
 }
 
+/**
+ * Extract a clean movie name + year from a normalized title by removing quality information.
+ * This is used for matching releases that represent the same movie but with different quality.
+ * 
+ * Example:
+ *   "nishaanchi 2 2025 1080p amzn web dl dd 5 1 atmos h 264 khn" 
+ *   -> "nishaanchi 2 2025"
+ */
+function extractMovieNameAndYear(normalizedTitle: string, year?: number): string {
+  // Start with the normalized title
+  let clean = normalizedTitle.toLowerCase();
+  
+  // Remove year if it's embedded (we'll add it back at the end)
+  clean = clean.replace(/\b(19|20)\d{2}\b/g, '');
+  
+  // Remove common quality/resolution patterns
+  clean = clean.replace(/\b(2160p|1080p|720p|480p|4k|uhd|fhd|hd|sd)\b/gi, '');
+  
+  // Remove codec patterns
+  clean = clean.replace(/\b(x264|x265|h264|h265|hevc|avc|h\.?264|h\.?265)\b/gi, '');
+  
+  // Remove source tags
+  clean = clean.replace(/\b(amzn|netflix|nf|jc|jiocinema|zee5|dsnp|disney|hotstar|hs|ss|webdl|web dl|webrip|bluray|dvdrip)\b/gi, '');
+  
+  // Remove audio patterns
+  clean = clean.replace(/\b(dd\+?|ddp|eac3|ac3|atmos|truehd|dts|aac|stereo|5\.1|7\.1|2\.0)\b/gi, '');
+  
+  // Remove common release group patterns (usually at the end)
+  clean = clean.replace(/\b([a-z0-9]{2,8}[-_][a-z0-9]{2,8}|[a-z]{2,8}\d{1,3})\b/gi, '');
+  
+  // Remove extra whitespace and trim
+  clean = clean.replace(/\s+/g, ' ').trim();
+  
+  // Add year back if provided
+  if (year) {
+    clean = `${clean} ${year}`;
+  }
+  
+  return clean.trim();
+}
+
 function buildDisplayTitle(release: Release): string {
   if (release.radarr_movie_title) {
     return release.radarr_movie_title;
@@ -81,20 +122,22 @@ router.get('/', async (req: Request, res: Response) => {
     }
     
     // Second pass: For releases without IDs, try to match them to existing groups
-    // by checking if any release in an ID-based group has the same normalized_title + year
+    // by extracting clean movie name + year (without quality info) and matching
     for (const release of allReleases) {
       if (!release.tmdb_id && !release.radarr_movie_id) {
-        const titleKey = `title_${release.normalized_title}_${release.year || 'unknown'}`;
+        const releaseMovieKey = extractMovieNameAndYear(release.normalized_title, release.year);
+        const titleKey = `title_${releaseMovieKey}`;
         
-        // Try to find a matching group by checking normalized_title + year
+        // Try to find a matching group by checking if any release in an existing group
+        // has the same clean movie name + year (ignoring quality differences)
         let matched = false;
         for (const existingKey in releasesByMovie) {
           const existingReleases = releasesByMovie[existingKey];
-          // Check if any release in this group has the same normalized_title + year
-          const hasMatch = existingReleases.some(r => 
-            r.normalized_title === release.normalized_title && 
-            r.year === release.year
-          );
+          // Check if any release in this group has the same clean movie name + year
+          const hasMatch = existingReleases.some(r => {
+            const existingMovieKey = extractMovieNameAndYear(r.normalized_title, r.year);
+            return existingMovieKey === releaseMovieKey;
+          });
           
           if (hasMatch) {
             releasesByMovie[existingKey].push(release);
