@@ -73,8 +73,8 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
   // Remove codec patterns
   cleanTitle = cleanTitle.replace(/\b(x264|x265|h264|h265|hevc|avc|h\.?264|h\.?265)\b/gi, '');
   
-  // Remove source tags and quality indicators
-  cleanTitle = cleanTitle.replace(/\b(amzn|netflix|nf|jc|jiocinema|zee5|dsnp|disney|hotstar|hs|ss|web\s*dl|webdl|webrip|bluray|dvdrip|dus|dtr|khn)\b/gi, '');
+  // Remove source tags and quality indicators (handle hyphens: web-dl, web-dl, etc.)
+  cleanTitle = cleanTitle.replace(/\b(amzn|netflix|nf|jc|jiocinema|zee5|dsnp|disney|hotstar|hs|ss|web[- ]?dl|webdl|webrip|bluray|dvdrip|dus|dtr|khn)\b/gi, '');
   
   // Remove audio patterns
   cleanTitle = cleanTitle.replace(/\b(dd\+?|ddp|eac3|ac3|atmos|truehd|dts|aac|stereo|5\s*\.?\s*1|7\s*\.?\s*1|2\s*\.?\s*0)\b/gi, '');
@@ -85,18 +85,24 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
   // Remove any remaining parenthetical info at the end
   cleanTitle = cleanTitle.replace(/\s*\(.*?\)\s*$/, '');
   
-  // Remove common release group patterns (usually at the end)
+  // Remove common release group patterns (usually at the end, handle hyphens)
   cleanTitle = cleanTitle.replace(/\b([a-z]{2,4}(?:[-_][a-z]{2,4})?)\b/gi, '');
   
   // Remove any remaining numbers that might be part of quality info
   cleanTitle = cleanTitle.replace(/\b\d{3,}\b/g, '');
   
+  // Remove standalone hyphens and dashes
+  cleanTitle = cleanTitle.replace(/\s*[-–—]\s*/g, ' ');
+  
   // Normalize "and" to "&" for better matching (e.g., "x and y" -> "x & y")
   // This helps match titles like "X & Y" in TMDB
   cleanTitle = cleanTitle.replace(/\s+and\s+/gi, ' & ');
   
-  // Clean up extra whitespace
+  // Clean up extra whitespace and trim
   cleanTitle = cleanTitle.replace(/\s+/g, ' ').trim();
+  
+  // Remove trailing hyphens, dashes, or other punctuation
+  cleanTitle = cleanTitle.replace(/[-–—\s]+$/, '').trim();
 
   return {
     guid: item.guid || item.link,
