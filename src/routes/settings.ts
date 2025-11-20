@@ -4,6 +4,7 @@ import { settingsModel } from '../models/settings';
 import { QualitySettings } from '../types/QualitySettings';
 import { fetchAndProcessFeeds } from '../rss/fetchFeeds';
 import { backfillRadarrLinks } from '../tasks/backfillRadarr';
+import { getRefreshStats } from './refreshStats';
 
 const router = Router();
 
@@ -126,6 +127,12 @@ router.post('/quality', async (req: Request, res: Response) => {
 
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
+    // Check if refresh is already running
+    const stats = getRefreshStats();
+    if (stats.isRunning) {
+      return res.json({ success: false, message: 'Refresh is already in progress', stats });
+    }
+
     // Run in background - don't await, let it process asynchronously
     fetchAndProcessFeeds()
       .then(() => {
@@ -135,10 +142,20 @@ router.post('/refresh', async (req: Request, res: Response) => {
         console.error('Background feed refresh error:', error);
       });
 
-    res.json({ success: true, message: 'Feed refresh started. Check console logs for progress.' });
+    res.json({ success: true, message: 'Feed refresh started', stats: getRefreshStats() });
   } catch (error) {
     console.error('Refresh error:', error);
     res.status(500).json({ error: 'Failed to start refresh' });
+  }
+});
+
+router.get('/refresh/stats', (req: Request, res: Response) => {
+  try {
+    const stats = getRefreshStats();
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error('Get refresh stats error:', error);
+    res.status(500).json({ error: 'Failed to get refresh stats' });
   }
 });
 

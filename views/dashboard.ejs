@@ -51,9 +51,12 @@
   <main class="container mx-auto px-4 py-8">
     <div class="mb-6 flex justify-between items-center">
       <h2 class="text-2xl font-bold">Dashboard</h2>
-      <button onclick="refreshFeeds()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-        Refresh Feeds
-      </button>
+      <div class="flex items-center gap-4">
+        <div id="refreshStats" class="text-sm text-gray-600 hidden"></div>
+        <button onclick="refreshFeeds()" id="refreshButton" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+          Refresh Feeds
+        </button>
+      </div>
     </div>
 
     <% if (!movieGroupsByPeriod || Object.keys(movieGroupsByPeriod).every(period => movieGroupsByPeriod[period].length === 0)) { %>
@@ -504,9 +507,15 @@
       const rootFolderPath = document.getElementById('rootFolderSelect').value;
 
       if (!qualityProfileId || !rootFolderPath) {
-        alert('Please select both quality profile and root folder');
+        showToast('Please select both quality profile and root folder', 'warning');
         return;
       }
+
+      // Disable submit button
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding...';
 
       try {
         const res = await fetch(`/actions/${releaseId}/add`, {
@@ -516,61 +525,118 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert(data.message || 'Movie added to Radarr!');
+          showToast(data.message || 'Movie added to Radarr!', 'success');
           hideAddMovieModal();
-          location.reload();
+          setTimeout(() => location.reload(), 1500);
         } else {
-          alert('Error: ' + (data.error || 'Unknown error'));
+          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
         }
       } catch (error) {
-        alert('Error: ' + error.message);
+        showToast('Error: ' + error.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
       }
     }
 
     async function upgradeMovie(id) {
-      if (!confirm('Trigger upgrade search in Radarr?')) return;
-      try {
-        const res = await fetch(`/actions/${id}/upgrade`, { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          alert('Upgrade search triggered!');
-          location.reload();
-        } else {
-          alert('Error: ' + (data.error || 'Unknown error'));
+      showConfirm('Trigger upgrade search in Radarr?', async () => {
+        try {
+          const res = await fetch(`/actions/${id}/upgrade`, { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            showToast(data.message || 'Upgrade search triggered!', 'success');
+            setTimeout(() => location.reload(), 1500);
+          } else {
+            showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          }
+        } catch (error) {
+          showToast('Error: ' + error.message, 'error');
         }
-      } catch (error) {
-        alert('Error: ' + error.message);
-      }
+      });
     }
 
     async function ignoreRelease(id) {
-      if (!confirm('Ignore this release?')) return;
-      try {
-        const res = await fetch(`/actions/${id}/ignore`, { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          location.reload();
-        } else {
-          alert('Error: ' + (data.error || 'Unknown error'));
+      showConfirm('Ignore this release?', async () => {
+        try {
+          const res = await fetch(`/actions/${id}/ignore`, { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            showToast('Release ignored successfully', 'success');
+            setTimeout(() => location.reload(), 1500);
+          } else {
+            showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          }
+        } catch (error) {
+          showToast('Error: ' + error.message, 'error');
         }
-      } catch (error) {
-        alert('Error: ' + error.message);
-      }
+      });
     }
+
+            let refreshInterval = null;
 
             async function refreshFeeds() {
               showConfirm('Refresh all RSS feeds? This may take a while.', async () => {
+                const refreshButton = document.getElementById('refreshButton');
+                const refreshStats = document.getElementById('refreshStats');
+                
+                refreshButton.disabled = true;
+                refreshButton.textContent = 'Refreshing...';
+                refreshStats.classList.remove('hidden');
+                
                 try {
                   const res = await fetch('/settings/refresh', { method: 'POST' });
                   const data = await res.json();
                   if (data.success) {
-                    showToast('Feed refresh started! The page will refresh in a few seconds.', 'info');
-                    setTimeout(() => location.reload(), 5000);
+                    showToast('Feed refresh started!', 'info');
+                    
+                    // Poll for stats every 2 seconds
+                    refreshInterval = setInterval(async () => {
+                      try {
+                        const statsRes = await fetch('/settings/refresh/stats');
+                        const statsData = await statsRes.json();
+                        if (statsData.success && statsData.stats) {
+                          const s = statsData.stats;
+                          if (s.isRunning) {
+                            const progress = s.totalFeeds > 0 
+                              ? `${s.feedsProcessed}/${s.totalFeeds} feeds`
+                              : 'Starting...';
+                            refreshStats.innerHTML = `
+                              <span class="font-medium">${s.currentFeed || 'Processing...'}</span>
+                              <span class="text-gray-500">(${progress})</span>
+                              <span class="ml-2">New: ${s.newCount} | Upgrade: ${s.upgradeCount} | Ignored: ${s.ignoredCount}</span>
+                            `;
+                          } else {
+                            // Refresh complete
+                            clearInterval(refreshInterval);
+                            refreshButton.disabled = false;
+                            refreshButton.textContent = 'Refresh Feeds';
+                            refreshStats.innerHTML = `
+                              <span class="text-green-600 font-medium">
+                                Complete! New: ${s.newCount} | Upgrade: ${s.upgradeCount} | Ignored: ${s.ignoredCount}
+                              </span>
+                            `;
+                            setTimeout(() => {
+                              location.reload();
+                            }, 2000);
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Error fetching refresh stats:', error);
+                      }
+                    }, 2000);
                   } else {
                     showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+                    refreshButton.disabled = false;
+                    refreshButton.textContent = 'Refresh Feeds';
+                    refreshStats.classList.add('hidden');
                   }
                 } catch (error) {
                   showToast('Error: ' + error.message, 'error');
+                  refreshButton.disabled = false;
+                  refreshButton.textContent = 'Refresh Feeds';
+                  refreshStats.classList.add('hidden');
                 }
               });
             }

@@ -10,12 +10,21 @@ import tmdbClient from '../tmdb/client';
 import imdbClient from '../imdb/client';
 import { Release } from '../types/Release';
 import { QualitySettings } from '../types/QualitySettings';
+import { setRefreshStats, resetRefreshStats, getRefreshStats } from '../routes/refreshStats';
 
 const parser = new Parser();
 
 export async function fetchAndProcessFeeds(): Promise<void> {
+  resetRefreshStats();
   const feeds = feedsModel.getEnabled();
   const settings = settingsModel.getQualitySettings();
+  
+  setRefreshStats({
+    isRunning: true,
+    startTime: new Date(),
+    totalFeeds: feeds.length,
+    feedsProcessed: 0,
+  });
   
   // Get API keys from settings
   const allSettings = settingsModel.getAll();
@@ -32,6 +41,9 @@ export async function fetchAndProcessFeeds(): Promise<void> {
 
   for (const feed of feeds) {
     try {
+      setRefreshStats({
+        currentFeed: feed.name,
+      });
       console.log(`Fetching feed: ${feed.name} (${feed.url})`);
       const feedData = await parser.parseURL(feed.url);
 
@@ -711,13 +723,32 @@ export async function fetchAndProcessFeeds(): Promise<void> {
         }
       }
       
-      console.log(`Feed ${feed.name}: Processed ${processedCount}, Skipped ${skippedCount}, Errors ${errorCount}`);
-      console.log(`  Status breakdown: NEW=${newCount}, UPGRADE_CANDIDATE=${upgradeCount}, IGNORED=${ignoredCount}`);
-    } catch (feedError) {
-      console.error(`Error fetching feed: ${feed.name}`, feedError);
-    }
-  }
+              console.log(`Feed ${feed.name}: Processed ${processedCount}, Skipped ${skippedCount}, Errors ${errorCount}`);
+              console.log(`  Status breakdown: NEW=${newCount}, UPGRADE_CANDIDATE=${upgradeCount}, IGNORED=${ignoredCount}`);
+              
+              const currentStats = getRefreshStats();
+              setRefreshStats({
+                feedsProcessed: currentStats.feedsProcessed + 1,
+                itemsProcessed: currentStats.itemsProcessed + processedCount,
+                newCount: currentStats.newCount + newCount,
+                upgradeCount: currentStats.upgradeCount + upgradeCount,
+                ignoredCount: currentStats.ignoredCount + ignoredCount,
+                errorCount: currentStats.errorCount + errorCount,
+              });
+            } catch (feedError) {
+              console.error(`Error fetching feed: ${feed.name}`, feedError);
+              const currentStats = getRefreshStats();
+              setRefreshStats({
+                feedsProcessed: currentStats.feedsProcessed + 1,
+                errorCount: currentStats.errorCount + 1,
+              });
+            }
+          }
 
-  console.log('Finished processing all feeds');
-}
+          console.log('Finished processing all feeds');
+          setRefreshStats({
+            isRunning: false,
+            currentFeed: undefined,
+          });
+        }
 
