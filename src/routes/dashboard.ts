@@ -200,9 +200,12 @@ router.get('/', async (req: Request, res: Response) => {
         ? []
         : releases.filter(r => !r.radarr_movie_id && (r.status === 'NEW' || r.status === 'ATTENTION_NEEDED'));
 
+      // Existing releases: those with radarr_movie_id but not upgrade candidates
+      // Exclude IGNORED releases from existing (they're already handled, no need to show)
       const existing = releases.filter(r => (
         !upgradeGuids.has(r.guid) &&
-        (r.radarr_movie_id || hasRadarrMatch)
+        (r.radarr_movie_id || hasRadarrMatch) &&
+        r.status !== 'IGNORED' // Don't show ignored releases in existing section
       ));
       
       // Extract Radarr info from the first release that has existing_file_attributes
