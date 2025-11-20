@@ -67,7 +67,7 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
         stats.totalItems += feedData.items.length;
 
         // Process items and enrich with TMDB/IMDB IDs
-        const enrichedItems: Array<{ parsed: any; tmdbId: number | null; imdbId: string | null; originalItem: any }> = [];
+        const enrichedItems: Array<{ parsed: any; tmdbId: number | null; imdbId: string | null; originalItem: any; guid: string }> = [];
         for (const item of feedData.items) {
           try {
             if (!item.title && !item.link) {
@@ -75,84 +75,99 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
             }
 
             const parsed = parseRSSItem(item as any, feed.id!, feed.name);
-            let tmdbId = (parsed as any).tmdb_id;
-            let imdbId = (parsed as any).imdb_id;
-            const cleanTitle = (parsed as any).clean_title;
-            const year = parsed.year;
-
-            // Enrich with TMDB/IMDB IDs if missing
-            // Priority: TMDB (primary), IMDB (secondary)
+            const guid = parsed.guid || parsed.link || '';
             
-            // Step 1: If we have IMDB ID but no TMDB ID, try to get TMDB ID from IMDB ID
-            if (!tmdbId && imdbId && tmdbApiKey) {
-              try {
-                console.log(`  Looking up TMDB ID for IMDB ID ${imdbId} (${parsed.title})`);
-                const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
-                if (tmdbMovie) {
-                  tmdbId = tmdbMovie.id;
-                  console.log(`  ✓ Found TMDB ID ${tmdbId} for IMDB ID ${imdbId}`);
-                }
-              } catch (error) {
-                console.log(`  ✗ Failed to find TMDB ID for IMDB ID ${imdbId}:`, error);
-              }
-            }
+            // Check if item already exists in database
+            const existingItem = db
+              .prepare('SELECT tmdb_id, imdb_id, clean_title, year FROM rss_feed_items WHERE guid = ?')
+              .get(guid) as { tmdb_id: number | null; imdb_id: string | null; clean_title: string | null; year: number | null } | undefined;
 
-            // Step 2: If we don't have IMDB ID but have clean title, try OMDB/IMDB search
-            if (!imdbId && cleanTitle && (omdbApiKey || true)) { // OMDB works without key but has rate limits
-              try {
-                console.log(`  Searching IMDB for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
-                const imdbResult = await imdbClient.searchMovie(cleanTitle, year || undefined);
-                if (imdbResult) {
-                  imdbId = imdbResult.imdbId;
-                  console.log(`  ✓ Found IMDB ID ${imdbId} for "${cleanTitle}"`);
-                  
-                  // If we now have IMDB ID but still no TMDB ID, try to get TMDB ID
-                  if (!tmdbId && tmdbApiKey) {
-                    try {
-                      const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
-                      if (tmdbMovie) {
-                        tmdbId = tmdbMovie.id;
-                        console.log(`  ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
-                      }
-                    } catch (error) {
-                      // Ignore
-                    }
-                  }
-                }
-              } catch (error) {
-                console.log(`  ✗ Failed to find IMDB ID for "${cleanTitle}":`, error);
-              }
-            }
+            // Start with IDs from RSS feed or existing database entry
+            let tmdbId = (parsed as any).tmdb_id || (existingItem?.tmdb_id || null);
+            let imdbId = (parsed as any).imdb_id || (existingItem?.imdb_id || null);
+            const cleanTitle = (parsed as any).clean_title || existingItem?.clean_title || null;
+            const year = parsed.year || existingItem?.year || null;
 
-            // Step 3: If we still don't have TMDB ID but have clean title, try TMDB search
-            if (!tmdbId && cleanTitle && tmdbApiKey) {
-              try {
-                console.log(`  Searching TMDB for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
-                const tmdbMovie = await tmdbClient.searchMovie(cleanTitle, year || undefined);
-                if (tmdbMovie) {
-                  // Validate year match if we have a year
-                  let isValidMatch = true;
-                  if (year && tmdbMovie.release_date) {
-                    const releaseYear = new Date(tmdbMovie.release_date).getFullYear();
-                    if (releaseYear !== year) {
-                      isValidMatch = false;
-                      console.log(`  ✗ TMDB result year mismatch: ${releaseYear} vs ${year}`);
-                    }
-                  }
-                  
-                  if (isValidMatch) {
+            // Always try to enrich if IDs are missing (for both new and existing items)
+            const needsEnrichment = !tmdbId || !imdbId;
+
+            if (needsEnrichment) {
+              console.log(`  Enriching ${existingItem ? 'existing' : 'new'} item: "${parsed.title}" (TMDB: ${tmdbId || 'missing'}, IMDB: ${imdbId || 'missing'})`);
+
+              // Enrich with TMDB/IMDB IDs if missing
+              // Priority: TMDB (primary), IMDB (secondary)
+              
+              // Step 1: If we have IMDB ID but no TMDB ID, try to get TMDB ID from IMDB ID
+              if (!tmdbId && imdbId && tmdbApiKey) {
+                try {
+                  console.log(`    Looking up TMDB ID for IMDB ID ${imdbId}`);
+                  const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                  if (tmdbMovie) {
                     tmdbId = tmdbMovie.id;
-                    console.log(`  ✓ Found TMDB ID ${tmdbId} for "${cleanTitle}"`);
+                    console.log(`    ✓ Found TMDB ID ${tmdbId} for IMDB ID ${imdbId}`);
+                  }
+                } catch (error) {
+                  console.log(`    ✗ Failed to find TMDB ID for IMDB ID ${imdbId}:`, error);
+                }
+              }
+
+              // Step 2: If we don't have IMDB ID but have clean title, try OMDB/IMDB search
+              if (!imdbId && cleanTitle && (omdbApiKey || true)) { // OMDB works without key but has rate limits
+                try {
+                  console.log(`    Searching IMDB for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
+                  const imdbResult = await imdbClient.searchMovie(cleanTitle, year || undefined);
+                  if (imdbResult) {
+                    imdbId = imdbResult.imdbId;
+                    console.log(`    ✓ Found IMDB ID ${imdbId} for "${cleanTitle}"`);
                     
-                    // If TMDB movie has IMDB ID and we don't have it yet, use it
-                    if (!imdbId && tmdbMovie.imdb_id) {
-                      imdbId = tmdbMovie.imdb_id;
-                      console.log(`  ✓ Found IMDB ID ${imdbId} from TMDB movie`);
+                    // If we now have IMDB ID but still no TMDB ID, try to get TMDB ID
+                    if (!tmdbId && tmdbApiKey) {
+                      try {
+                        const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                        if (tmdbMovie) {
+                          tmdbId = tmdbMovie.id;
+                          console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
+                        }
+                      } catch (error) {
+                        // Ignore
+                      }
                     }
                   }
+                } catch (error) {
+                  console.log(`    ✗ Failed to find IMDB ID for "${cleanTitle}":`, error);
                 }
-              } catch (error) {
-                console.log(`  ✗ Failed to find TMDB ID for "${cleanTitle}":`, error);
+              }
+
+              // Step 3: If we still don't have TMDB ID but have clean title, try TMDB search
+              if (!tmdbId && cleanTitle && tmdbApiKey) {
+                try {
+                  console.log(`    Searching TMDB for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
+                  const tmdbMovie = await tmdbClient.searchMovie(cleanTitle, year || undefined);
+                  if (tmdbMovie) {
+                    // Validate year match if we have a year
+                    let isValidMatch = true;
+                    if (year && tmdbMovie.release_date) {
+                      const releaseYear = new Date(tmdbMovie.release_date).getFullYear();
+                      if (releaseYear !== year) {
+                        isValidMatch = false;
+                        console.log(`    ✗ TMDB result year mismatch: ${releaseYear} vs ${year}`);
+                      }
+                    }
+                    
+                    if (isValidMatch) {
+                      tmdbId = tmdbMovie.id;
+                      console.log(`    ✓ Found TMDB ID ${tmdbId} for "${cleanTitle}"`);
+                      
+                      // If TMDB movie has IMDB ID and we don't have it yet, use it
+                      if (!imdbId && tmdbMovie.imdb_id) {
+                        imdbId = tmdbMovie.imdb_id;
+                        console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie`);
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.log(`    ✗ Failed to find TMDB ID for "${cleanTitle}":`, error);
+                }
               }
             }
 
@@ -161,25 +176,26 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
               tmdbId: tmdbId || null,
               imdbId: imdbId || null,
               originalItem: item,
+              guid,
             });
           } catch (itemError: any) {
             console.error(`Error enriching RSS item: ${item.title || item.link}`, itemError);
             // Still add the item without enrichment
+            const parsed = parseRSSItem(item as any, feed.id!, feed.name);
             enrichedItems.push({
-              parsed: parseRSSItem(item as any, feed.id!, feed.name),
+              parsed,
               tmdbId: null,
               imdbId: null,
               originalItem: item,
+              guid: parsed.guid || parsed.link || '',
             });
           }
         }
 
         // Use transaction for better performance
         const transaction = db.transaction(() => {
-          for (const { parsed, tmdbId, imdbId, originalItem } of enrichedItems) {
+          for (const { parsed, tmdbId, imdbId, originalItem, guid } of enrichedItems) {
             try {
-              const guid = parsed.guid || parsed.link || '';
-
               // Check if item already exists
               const existing = db
                 .prepare('SELECT id FROM rss_feed_items WHERE guid = ?')

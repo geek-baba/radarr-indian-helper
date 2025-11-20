@@ -75,6 +75,7 @@
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Published</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TMDB ID</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IMDB ID</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -109,6 +110,15 @@
                   <% if (item.tmdb_id) { %>
                     <a href="https://www.themoviedb.org/movie/<%= item.tmdb_id %>" target="_blank" class="text-blue-600 hover:underline">
                       <%= item.tmdb_id %>
+                    </a>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                  <% if (item.imdb_id) { %>
+                    <a href="https://www.imdb.com/title/<%= item.imdb_id %>" target="_blank" class="text-blue-600 hover:underline">
+                      <%= item.imdb_id %>
                     </a>
                   <% } else { %>
                     -
