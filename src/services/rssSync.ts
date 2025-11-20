@@ -150,14 +150,12 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                 }
               }
 
-              // Step 2b: If still no IMDB ID, try DuckDuckGo web search as fallback
-              if (!imdbId && cleanTitle) {
+              // Step 2b: If still no IMDB ID, try Brave Search as fallback
+              if (!imdbId && cleanTitle && braveApiKey) {
                 try {
-                  console.log(`    Searching IMDB (DuckDuckGo) for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
-                  const duckDuckGoImdbId = await imdbClient.searchGoogleForImdbId(cleanTitle, year || undefined);
-                  if (duckDuckGoImdbId) {
-                    imdbId = duckDuckGoImdbId;
-                    console.log(`    ✓ Found IMDB ID ${imdbId} via DuckDuckGo for "${cleanTitle}"`);
+                  const braveImdbId = await braveClient.searchForImdbId(cleanTitle, year || undefined);
+                  if (braveImdbId) {
+                    imdbId = braveImdbId;
                     
                     // If we now have IMDB ID but still no TMDB ID, try to get TMDB ID
                     if (!tmdbId && tmdbApiKey) {
@@ -173,7 +171,7 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                     }
                   }
                 } catch (error) {
-                  console.log(`    ✗ Failed to find IMDB ID via DuckDuckGo for "${cleanTitle}":`, error);
+                  console.log(`    ✗ Failed to find IMDB ID via Brave for "${cleanTitle}":`, error);
                 }
               }
 

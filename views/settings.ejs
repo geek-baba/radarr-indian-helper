@@ -495,6 +495,26 @@
       }
     }
 
+    async function saveBraveApiKey(event) {
+      event.preventDefault();
+      const apiKey = document.getElementById('braveApiKey').value;
+      try {
+        const res = await fetch('/settings/brave-api-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Brave Search API key saved successfully!', 'success');
+        } else {
+          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+      }
+    }
+
     async function saveRadarrConfig(event) {
       event.preventDefault();
       const apiUrl = document.getElementById('radarrApiUrl').value.trim();
