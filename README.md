@@ -21,10 +21,14 @@ Radarr Indian Helper is a Node.js + TypeScript + Express application that helps 
 ### Radarr API Setup
 
 1. Get your Radarr API key from Radarr Settings → General → Security
-2. Set the following environment variables:
-   - `RADARR_API_URL`: Your Radarr API URL (e.g., `http://radarr:7878/api/v3`)
-   - `RADARR_API_KEY`: Your Radarr API key
-   - `PORT`: Server port (default: 8085)
+2. After starting the application, navigate to the Settings page (`/settings`)
+3. In the "Radarr API Configuration" section, enter:
+   - **Radarr API URL**: Your Radarr API URL (e.g., `http://radarr:7878/api/v3`)
+   - **Radarr API Key**: Your Radarr API key
+4. Click "Save Radarr Configuration"
+5. The configuration is stored in the database and persists across container restarts
+
+**Note**: Radarr API configuration is no longer done via environment variables. Use the Settings page instead.
 
 ### Adding RSS Feeds
 
@@ -70,12 +74,12 @@ All settings are persisted in SQLite database.
    npm install
    ```
 
-2. Set environment variables:
+2. Set environment variables (optional):
    ```bash
    export PORT=8085
-   export RADARR_API_URL=http://your-radarr-url:7878/api/v3
-   export RADARR_API_KEY=your_api_key_here
    ```
+   
+   **Note**: Radarr API configuration is done via the Settings page after starting the app, not via environment variables.
 
 3. Build the project:
    ```bash
@@ -95,8 +99,10 @@ All settings are persisted in SQLite database.
 
 ```bash
 docker build -t radarr-indian-helper .
-docker run -p 8085:8085 -e RADARR_API_URL=... -e RADARR_API_KEY=... radarr-indian-helper
+docker run -p 8085:8085 -v /path/to/data:/app/data radarr-indian-helper
 ```
+
+**Note**: Radarr API configuration is done via the Settings page after starting the container, not via environment variables.
 
 Docker Quick Start:
 
