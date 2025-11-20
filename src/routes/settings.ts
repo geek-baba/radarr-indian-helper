@@ -131,22 +131,25 @@ router.post('/quality', async (req: Request, res: Response) => {
 
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
-    // Check if refresh is already running
-    const stats = getRefreshStats();
-    if (stats.isRunning) {
-      return res.json({ success: false, message: 'Refresh is already in progress', stats });
-    }
+    // Import sync services
+    const { syncRadarrMovies } = await import('../services/radarrSync');
+    const { syncRssFeeds } = await import('../services/rssSync');
+    const { runMatchingEngine } = await import('../services/matchingEngine');
 
-    // Run in background - don't await, let it process asynchronously
-    fetchAndProcessFeeds()
-      .then(() => {
-        console.log('Feed refresh completed successfully');
-      })
-      .catch((error) => {
-        console.error('Background feed refresh error:', error);
-      });
+    // Run full sync cycle in background
+    (async () => {
+      try {
+        console.log('Manual sync triggered from UI');
+        await syncRadarrMovies();
+        await syncRssFeeds();
+        await runMatchingEngine();
+        console.log('Manual sync completed');
+      } catch (error) {
+        console.error('Manual sync error:', error);
+      }
+    })();
 
-    res.json({ success: true, message: 'Feed refresh started', stats: getRefreshStats() });
+    res.json({ success: true, message: 'Full sync cycle started (Radarr → RSS → Matching)' });
   } catch (error) {
     console.error('Refresh error:', error);
     res.status(500).json({ error: 'Failed to start refresh' });

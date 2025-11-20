@@ -65,6 +65,57 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS radarr_movies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    radarr_id INTEGER UNIQUE NOT NULL,
+    tmdb_id INTEGER,
+    imdb_id TEXT,
+    title TEXT NOT NULL,
+    year INTEGER,
+    path TEXT,
+    has_file INTEGER NOT NULL DEFAULT 0,
+    movie_file TEXT,
+    original_language TEXT,
+    images TEXT,
+    synced_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS rss_feed_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guid TEXT UNIQUE NOT NULL,
+    feed_id INTEGER NOT NULL,
+    feed_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    normalized_title TEXT NOT NULL,
+    clean_title TEXT,
+    year INTEGER,
+    source_site TEXT NOT NULL,
+    link TEXT NOT NULL,
+    resolution TEXT NOT NULL,
+    source_tag TEXT NOT NULL,
+    codec TEXT NOT NULL,
+    audio TEXT NOT NULL,
+    rss_size_mb REAL,
+    published_at TEXT NOT NULL,
+    tmdb_id INTEGER,
+    imdb_id TEXT,
+    audio_languages TEXT,
+    raw_data TEXT,
+    synced_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (feed_id) REFERENCES rss_feeds(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_radarr_movies_tmdb_id ON radarr_movies(tmdb_id);
+  CREATE INDEX IF NOT EXISTS idx_radarr_movies_radarr_id ON radarr_movies(radarr_id);
+  CREATE INDEX IF NOT EXISTS idx_rss_feed_items_feed_id ON rss_feed_items(feed_id);
+  CREATE INDEX IF NOT EXISTS idx_rss_feed_items_guid ON rss_feed_items(guid);
+  CREATE INDEX IF NOT EXISTS idx_rss_feed_items_tmdb_id ON rss_feed_items(tmdb_id);
+  CREATE INDEX IF NOT EXISTS idx_rss_feed_items_published_at ON rss_feed_items(published_at);
 `);
 
 // Migrate existing databases - add new columns if they don't exist
@@ -139,6 +190,8 @@ const defaultSettings = {
   minSizeIncreasePercentForUpgrade: 10,
   upgradeThreshold: 20,
   pollIntervalMinutes: 60,
+  radarrSyncIntervalHours: 6,
+  rssSyncIntervalHours: 1,
 };
 
 const existingSettings = db.prepare("SELECT value FROM app_settings WHERE key = 'qualitySettings'").get();

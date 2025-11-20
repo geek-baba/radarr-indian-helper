@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSS Feed Data - Radarr Indian Helper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-gray-800 text-white">
+    <div class="container mx-auto px-4 py-3">
+      <div class="flex justify-between items-center">
+        <h1 class="text-xl font-bold">Radarr Indian Helper</h1>
+        <div class="space-x-4">
+          <a href="/" class="hover:text-gray-300">Dashboard</a>
+          <a href="/data/radarr" class="hover:text-gray-300">Radarr Data</a>
+          <a href="/data/rss" class="hover:text-gray-300 font-semibold">RSS Data</a>
+          <a href="/settings" class="hover:text-gray-300">Settings</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <main class="container mx-auto px-4 py-8">
+    <div class="mb-6 flex justify-between items-center">
+      <div>
+        <h2 class="text-2xl font-bold">RSS Feed Items</h2>
+        <p class="text-sm text-gray-600 mt-1">
+          Last synced: <%= lastSync ? new Date(lastSync).toLocaleString() : 'Never' %>
+        </p>
+      </div>
+      <div class="text-right">
+        <div class="text-sm text-gray-600">
+          Total items: <span class="font-semibold"><%= totalItems %></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feed Filter -->
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+      <div class="flex items-center gap-4">
+        <label class="text-sm font-medium">Filter by Feed:</label>
+        <select 
+          onchange="window.location.href = '/data/rss' + (this.value ? '?feedId=' + this.value : '')"
+          class="border rounded px-3 py-2"
+        >
+          <option value="">All Feeds</option>
+          <% feeds.forEach(feed => { %>
+            <option value="<%= feed.id %>" <%= selectedFeedId === feed.id ? 'selected' : '' %>>
+              <%= feed.name %> (<%= itemsByFeed.find((f: any) => f.feedId === feed.id)?.itemCount || 0 %> items)
+            </option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+
+    <!-- Feed Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <% itemsByFeed.forEach(feed => { %>
+        <div class="bg-white rounded-lg shadow p-4">
+          <h3 class="font-semibold mb-2"><%= feed.feedName %></h3>
+          <div class="text-sm text-gray-600">
+            <div>Items: <span class="font-semibold"><%= feed.itemCount %></span></div>
+            <div>Last sync: <%= new Date(feed.lastSync).toLocaleString() %></div>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <!-- Items Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Feed</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Year</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resolution</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Codec</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Audio</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Published</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TMDB ID</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <% items.forEach(item => { %>
+              <tr>
+                <td class="px-4 py-3 text-sm"><%= item.feed_name %></td>
+                <td class="px-4 py-3 text-sm">
+                  <a href="<%= item.link %>" target="_blank" class="text-blue-600 hover:underline">
+                    <%= item.title %>
+                  </a>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600"><%= item.year || '-' %></td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"><%= item.resolution %></span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs"><%= item.source_tag %></span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs"><%= item.codec %></span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs"><%= item.audio %></span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                  <%= item.rss_size_mb ? item.rss_size_mb.toFixed(2) + ' MB' : '-' %>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                  <%= new Date(item.published_at).toLocaleString() %>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                  <% if (item.tmdb_id) { %>
+                    <a href="https://www.themoviedb.org/movie/<%= item.tmdb_id %>" target="_blank" class="text-blue-600 hover:underline">
+                      <%= item.tmdb_id %>
+                    </a>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+

@@ -4,8 +4,11 @@ import { config } from './config';
 import dashboardRouter from './routes/dashboard';
 import actionsRouter from './routes/actions';
 import settingsRouter from './routes/settings';
-import { fetchAndProcessFeeds } from './rss/fetchFeeds';
+import dataRouter from './routes/data';
 import { settingsModel } from './models/settings';
+import { syncRadarrMovies } from './services/radarrSync';
+import { syncRssFeeds } from './services/rssSync';
+import { runMatchingEngine } from './services/matchingEngine';
 
 const app = express();
 
@@ -19,37 +22,92 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/', dashboardRouter);
 app.use('/actions', actionsRouter);
 app.use('/settings', settingsRouter);
+app.use('/data', dataRouter);
 
-// Start periodic refresh
-let refreshInterval: NodeJS.Timeout | null = null;
+// Scheduled sync jobs
+let radarrSyncInterval: NodeJS.Timeout | null = null;
+let rssSyncInterval: NodeJS.Timeout | null = null;
+let matchingInterval: NodeJS.Timeout | null = null;
 
-function startPeriodicRefresh() {
-  const settings = settingsModel.getQualitySettings();
-  const intervalMs = settings.pollIntervalMinutes * 60 * 1000;
-
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
+async function runFullSyncCycle() {
+  try {
+    console.log('=== Starting full sync cycle ===');
+    
+    // Step 1: Sync Radarr
+    console.log('Step 1: Syncing Radarr movies...');
+    await syncRadarrMovies();
+    
+    // Step 2: Sync RSS feeds
+    console.log('Step 2: Syncing RSS feeds...');
+    await syncRssFeeds();
+    
+    // Step 3: Run matching engine
+    console.log('Step 3: Running matching engine...');
+    await runMatchingEngine();
+    
+    console.log('=== Full sync cycle completed ===');
+  } catch (error) {
+    console.error('Full sync cycle error:', error);
   }
-
-  refreshInterval = setInterval(() => {
-    console.log('Running periodic feed refresh...');
-    fetchAndProcessFeeds().catch((error) => {
-      console.error('Periodic refresh error:', error);
-    });
-  }, intervalMs);
-
-  console.log(`Periodic refresh started with interval: ${settings.pollIntervalMinutes} minutes`);
 }
 
-// Initial refresh on startup
-console.log('Starting initial feed refresh...');
-fetchAndProcessFeeds()
+function startScheduledSyncs() {
+  const settings = settingsModel.getQualitySettings();
+  
+  // Clear existing intervals
+  if (radarrSyncInterval) clearInterval(radarrSyncInterval);
+  if (rssSyncInterval) clearInterval(rssSyncInterval);
+  if (matchingInterval) clearInterval(matchingInterval);
+
+  // Radarr sync interval
+  const radarrIntervalMs = (settings.radarrSyncIntervalHours || 6) * 60 * 60 * 1000;
+  radarrSyncInterval = setInterval(async () => {
+    console.log('Running scheduled Radarr sync...');
+    try {
+      await syncRadarrMovies();
+    } catch (error) {
+      console.error('Scheduled Radarr sync error:', error);
+    }
+  }, radarrIntervalMs);
+  console.log(`Radarr sync scheduled every ${settings.radarrSyncIntervalHours || 6} hours`);
+
+  // RSS sync interval
+  const rssIntervalMs = (settings.rssSyncIntervalHours || 1) * 60 * 60 * 1000;
+  rssSyncInterval = setInterval(async () => {
+    console.log('Running scheduled RSS sync...');
+    try {
+      await syncRssFeeds();
+      // After RSS sync, run matching engine
+      await runMatchingEngine();
+    } catch (error) {
+      console.error('Scheduled RSS sync error:', error);
+    }
+  }, rssIntervalMs);
+  console.log(`RSS sync scheduled every ${settings.rssSyncIntervalHours || 1} hours`);
+
+  // Matching engine runs after RSS sync, but also run it periodically
+  // (it will use the latest synced data)
+  const matchingIntervalMs = 30 * 60 * 1000; // Every 30 minutes
+  matchingInterval = setInterval(async () => {
+    console.log('Running scheduled matching engine...');
+    try {
+      await runMatchingEngine();
+    } catch (error) {
+      console.error('Scheduled matching engine error:', error);
+    }
+  }, matchingIntervalMs);
+  console.log('Matching engine scheduled every 30 minutes');
+}
+
+// Initial sync on startup
+console.log('Starting initial sync cycle...');
+runFullSyncCycle()
   .then(() => {
-    startPeriodicRefresh();
+    startScheduledSyncs();
   })
   .catch((error) => {
-    console.error('Initial refresh error:', error);
-    startPeriodicRefresh(); // Start periodic refresh anyway
+    console.error('Initial sync error:', error);
+    startScheduledSyncs(); // Start scheduled syncs anyway
   });
 
 const port = config.port;

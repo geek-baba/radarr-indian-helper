@@ -6,6 +6,7 @@ import tmdbClient from '../tmdb/client';
 import { settingsModel } from '../models/settings';
 import { config } from '../config';
 import { Release } from '../types/Release';
+import { getSyncedRadarrMovieByTmdbId, getSyncedRadarrMovieByRadarrId } from '../services/radarrSync';
 
 const router = Router();
 
@@ -245,9 +246,25 @@ router.get('/', async (req: Request, res: Response) => {
         try {
           let movie: any = null;
           if (movieGroup.radarrMovieId) {
-            movie = await radarrClient.getMovie(movieGroup.radarrMovieId);
+            // Use synced Radarr data instead of real-time API call
+            const syncedMovie = getSyncedRadarrMovieByRadarrId(movieGroup.radarrMovieId);
+            if (syncedMovie && syncedMovie.movie_file) {
+              try {
+                movie = { movieFile: JSON.parse(syncedMovie.movie_file) };
+              } catch (error) {
+                console.error('Error parsing synced movie file:', error);
+              }
+            }
           } else if (movieGroup.tmdbId) {
-            movie = await radarrClient.getMovie(movieGroup.tmdbId);
+            // Use synced Radarr data instead of real-time API call
+            const syncedMovie = getSyncedRadarrMovieByTmdbId(movieGroup.tmdbId);
+            if (syncedMovie && syncedMovie.movie_file) {
+              try {
+                movie = { movieFile: JSON.parse(syncedMovie.movie_file) };
+              } catch (error) {
+                console.error('Error parsing synced movie file:', error);
+              }
+            }
           }
           
           if (movie) {

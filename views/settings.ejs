@@ -41,7 +41,9 @@
         <h1 class="text-xl font-bold">Radarr Indian Helper</h1>
         <div class="space-x-4">
           <a href="/" class="hover:text-gray-300">Dashboard</a>
-          <a href="/settings" class="hover:text-gray-300">Settings</a>
+          <a href="/data/radarr" class="hover:text-gray-300">Radarr Data</a>
+          <a href="/data/rss" class="hover:text-gray-300">RSS Data</a>
+          <a href="/settings" class="hover:text-gray-300 font-semibold">Settings</a>
         </div>
       </div>
     </div>
@@ -304,6 +306,24 @@
               <input type="number" name="pollIntervalMinutes" 
                      value="<%= qualitySettings.pollIntervalMinutes %>"
                      class="w-full border rounded px-2 py-1">
+              <p class="text-xs text-gray-500 mt-1">Note: This setting is deprecated. Use sync intervals below.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Radarr Sync Interval (hours):</label>
+              <input type="number" name="radarrSyncIntervalHours" 
+                     value="<%= qualitySettings.radarrSyncIntervalHours || 6 %>"
+                     min="1"
+                     class="w-full border rounded px-2 py-1">
+              <p class="text-xs text-gray-500 mt-1">How often to sync all movies from Radarr</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">RSS Sync Interval (hours):</label>
+              <input type="number" name="rssSyncIntervalHours" 
+                     value="<%= qualitySettings.rssSyncIntervalHours || 1 %>"
+                     min="0.5"
+                     step="0.5"
+                     class="w-full border rounded px-2 py-1">
+              <p class="text-xs text-gray-500 mt-1">How often to sync RSS feeds</p>
             </div>
           </div>
         </div>

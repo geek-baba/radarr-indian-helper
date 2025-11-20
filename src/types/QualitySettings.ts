@@ -23,6 +23,8 @@ export interface QualitySettings {
   minSizeIncreasePercentForUpgrade: number;
   upgradeThreshold: number;
   pollIntervalMinutes: number;
+  radarrSyncIntervalHours: number;
+  rssSyncIntervalHours: number;
 }
 
 export interface ParsedRelease {
