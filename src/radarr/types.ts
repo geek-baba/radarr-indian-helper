@@ -80,3 +80,13 @@ export interface RadarrLookupResult {
   };
 }
 
+export interface RadarrQualityProfile {
+  id: number;
+  name: string;
+}
+
+export interface RadarrRootFolder {
+  id: number;
+  path: string;
+}
+
