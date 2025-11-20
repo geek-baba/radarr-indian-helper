@@ -8,7 +8,6 @@ import imdbClient from '../imdb/client';
 import { Release } from '../types/Release';
 import { getSyncedRadarrMovieByTmdbId, getSyncedRadarrMovieByRadarrId } from './radarrSync';
 import { getSyncedRssItems } from './rssSync';
-import radarrClient from '../radarr/client';
 
 export interface MatchingStats {
   totalRssItems: number;
