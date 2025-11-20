@@ -457,19 +457,28 @@
 
     async function saveTmdbApiKey(event) {
       event.preventDefault();
+      console.log('saveTmdbApiKey called');
       const apiKey = document.getElementById('tmdbApiKey').value.trim();
+      console.log('API Key length:', apiKey.length);
       const button = event.target.querySelector('button[type="submit"]');
+      if (!button) {
+        console.error('Button not found!');
+        showToast('Error: Could not find save button', 'error');
+        return;
+      }
       const originalText = button.textContent;
       button.disabled = true;
       button.textContent = 'Saving...';
       
       try {
+        console.log('Sending request to /settings/tmdb-api-key');
         const res = await fetch('/settings/tmdb-api-key', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ apiKey }),
         });
         const data = await res.json();
+        console.log('Response:', data);
         if (data.success) {
           showToast(data.message || 'TMDB API key saved successfully!', 'success');
           // Reload page after 1 second to show updated value
@@ -480,6 +489,7 @@
           button.textContent = originalText;
         }
       } catch (error) {
+        console.error('Error saving TMDB API key:', error);
         showToast('Error: ' + error.message, 'error');
         button.disabled = false;
         button.textContent = originalText;
@@ -488,19 +498,28 @@
 
     async function saveOmdbApiKey(event) {
       event.preventDefault();
+      console.log('saveOmdbApiKey called');
       const apiKey = document.getElementById('omdbApiKey').value.trim();
+      console.log('API Key length:', apiKey.length);
       const button = event.target.querySelector('button[type="submit"]');
+      if (!button) {
+        console.error('Button not found!');
+        showToast('Error: Could not find save button', 'error');
+        return;
+      }
       const originalText = button.textContent;
       button.disabled = true;
       button.textContent = 'Saving...';
       
       try {
+        console.log('Sending request to /settings/omdb-api-key');
         const res = await fetch('/settings/omdb-api-key', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ apiKey }),
         });
         const data = await res.json();
+        console.log('Response:', data);
         if (data.success) {
           showToast(data.message || 'OMDB API key saved successfully!', 'success');
           // Reload page after 1 second to show updated value
@@ -511,6 +530,7 @@
           button.textContent = originalText;
         }
       } catch (error) {
+        console.error('Error saving OMDB API key:', error);
         showToast('Error: ' + error.message, 'error');
         button.disabled = false;
         button.textContent = originalText;
@@ -519,19 +539,28 @@
 
     async function saveBraveApiKey(event) {
       event.preventDefault();
+      console.log('saveBraveApiKey called');
       const apiKey = document.getElementById('braveApiKey').value.trim();
+      console.log('API Key length:', apiKey.length);
       const button = event.target.querySelector('button[type="submit"]');
+      if (!button) {
+        console.error('Button not found!');
+        showToast('Error: Could not find save button', 'error');
+        return;
+      }
       const originalText = button.textContent;
       button.disabled = true;
       button.textContent = 'Saving...';
       
       try {
+        console.log('Sending request to /settings/brave-api-key');
         const res = await fetch('/settings/brave-api-key', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ apiKey }),
         });
         const data = await res.json();
+        console.log('Response:', data);
         if (data.success) {
           showToast(data.message || 'Brave Search API key saved successfully!', 'success');
           // Reload page after 1 second to show updated value
@@ -542,6 +571,7 @@
           button.textContent = originalText;
         }
       } catch (error) {
+        console.error('Error saving Brave API key:', error);
         showToast('Error: ' + error.message, 'error');
         button.disabled = false;
         button.textContent = originalText;
@@ -594,12 +624,20 @@
     let editingFeedId = null;
 
     function showAddFeedModal() {
+      console.log('showAddFeedModal called');
       editingFeedId = null;
+      const modal = document.getElementById('feedModal');
+      if (!modal) {
+        console.error('Feed modal not found!');
+        showToast('Error: Feed modal not found', 'error');
+        return;
+      }
       document.getElementById('modalTitle').textContent = 'Add RSS Feed';
       document.getElementById('feedForm').reset();
       document.getElementById('feedId').value = '';
       document.getElementById('feedEnabled').checked = true;
-      document.getElementById('feedModal').classList.remove('hidden');
+      modal.classList.remove('hidden');
+      console.log('Modal shown');
     }
 
     async function editFeed(id) {
@@ -728,33 +766,33 @@
 
     async function runBackfillRadarr() {
       showConfirm('Backfill Radarr links for all releases missing them?', async () => {
+        const button = document.getElementById('backfillRadarrButton');
+        const statusEl = document.getElementById('backfillRadarrStatus');
 
-      const button = document.getElementById('backfillRadarrButton');
-      const statusEl = document.getElementById('backfillRadarrStatus');
+        button.disabled = true;
+        button.textContent = 'Running...';
+        statusEl.textContent = 'Backfilling...';
+        statusEl.className = 'text-sm text-gray-600';
 
-      button.disabled = true;
-      button.textContent = 'Running...';
-      statusEl.textContent = 'Backfilling...';
-      statusEl.className = 'text-sm text-gray-600';
-
-      try {
-        const res = await fetch('/settings/maintenance/backfill-radarr', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          const summary = data.summary;
-          statusEl.textContent = `Updated ${summary.updated}/${summary.totalCandidates} releases. Not found: ${summary.notFound}, Errors: ${summary.errors.length}`;
-          statusEl.className = 'text-sm text-green-600';
-        } else {
-          statusEl.textContent = 'Error: ' + (data.error || 'Unknown error');
+        try {
+          const res = await fetch('/settings/maintenance/backfill-radarr', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            const summary = data.summary;
+            statusEl.textContent = `Updated ${summary.updated}/${summary.totalCandidates} releases. Not found: ${summary.notFound}, Errors: ${summary.errors.length}`;
+            statusEl.className = 'text-sm text-green-600';
+          } else {
+            statusEl.textContent = 'Error: ' + (data.error || 'Unknown error');
+            statusEl.className = 'text-sm text-red-600';
+          }
+        } catch (error) {
+          statusEl.textContent = 'Error: ' + error.message;
           statusEl.className = 'text-sm text-red-600';
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Backfill Radarr Links';
         }
-      } catch (error) {
-        statusEl.textContent = 'Error: ' + error.message;
-        statusEl.className = 'text-sm text-red-600';
-      } finally {
-        button.disabled = false;
-        button.textContent = 'Backfill Radarr Links';
-      }
+      });
     }
   </script>
 </body>

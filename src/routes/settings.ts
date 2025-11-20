@@ -458,5 +458,40 @@ router.get('/debug/radarr-config', (req: Request, res: Response) => {
   }
 });
 
+// Debug endpoint to check all API keys
+router.get('/debug/api-keys', (req: Request, res: Response) => {
+  try {
+    const allSettings = settingsModel.getAll();
+    const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key');
+    const omdbApiKey = allSettings.find(s => s.key === 'omdb_api_key');
+    const braveApiKey = allSettings.find(s => s.key === 'brave_api_key');
+    
+    res.json({
+      success: true,
+      database: {
+        tmdb_api_key: tmdbApiKey ? {
+          exists: true,
+          value: tmdbApiKey.value ? `${tmdbApiKey.value.substring(0, 10)}...` : 'empty',
+          length: tmdbApiKey.value?.length || 0
+        } : { exists: false },
+        omdb_api_key: omdbApiKey ? {
+          exists: true,
+          value: omdbApiKey.value ? `${omdbApiKey.value.substring(0, 10)}...` : 'empty',
+          length: omdbApiKey.value?.length || 0
+        } : { exists: false },
+        brave_api_key: braveApiKey ? {
+          exists: true,
+          value: braveApiKey.value ? `${braveApiKey.value.substring(0, 10)}...` : 'empty',
+          length: braveApiKey.value?.length || 0
+        } : { exists: false }
+      },
+      allSettingsKeys: allSettings.map(s => s.key),
+      totalSettings: allSettings.length
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
 
