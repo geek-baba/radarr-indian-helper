@@ -197,6 +197,10 @@ router.post('/omdb-api-key', (req: Request, res: Response) => {
 });
 
 router.post('/radarr-config', async (req: Request, res: Response) => {
+  console.log('=== POST /settings/radarr-config RECEIVED ===');
+  console.log('Request body keys:', Object.keys(req.body));
+  console.log('Request body:', JSON.stringify({ ...req.body, apiKey: req.body.apiKey ? '***HIDDEN***' : undefined }));
+  
   try {
     const { apiUrl, apiKey } = req.body;
     
