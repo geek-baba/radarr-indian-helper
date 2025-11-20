@@ -73,11 +73,35 @@
       <p class="text-gray-600">No releases found. Go to Settings to add RSS feeds and sync data.</p>
     <% } else { %>
       
+      <!-- Top-level Tabs -->
+      <div class="mb-6 border-b border-gray-200">
+        <nav class="flex space-x-8" aria-label="Main Sections">
+          <% 
+            const mainTabs = [
+              { key: 'new', label: 'New Movies', count: (newMoviesByPeriod.today?.length || 0) + (newMoviesByPeriod.yesterday?.length || 0) + (newMoviesByPeriod.older?.length || 0), visible: hasNewMovies },
+              { key: 'existing', label: 'Existing Movies', count: (existingMoviesByPeriod.today?.length || 0) + (existingMoviesByPeriod.yesterday?.length || 0) + (existingMoviesByPeriod.older?.length || 0), visible: hasExistingMovies },
+              { key: 'unmatched', label: 'Unmatched Items', count: unmatchedItems?.length || 0, visible: hasUnmatched }
+            ];
+            let firstVisibleTab = mainTabs.findIndex(tab => tab.visible);
+            if (firstVisibleTab === -1) firstVisibleTab = 0;
+          %>
+          <% mainTabs.forEach((tab, index) => { %>
+            <% if (tab.visible) { %>
+              <button 
+                onclick="showMainSection('<%= tab.key %>')" 
+                id="main-tab-<%= tab.key %>"
+                class="<%= index === firstVisibleTab ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-4 px-1 border-b-2 font-medium text-sm"
+              >
+                <%= tab.label %> (<%= tab.count %>)
+              </button>
+            <% } %>
+          <% }); %>
+        </nav>
+      </div>
+
       <!-- New Movies Section -->
       <% if (hasNewMovies) { %>
-        <div class="mb-8">
-          <h3 class="text-xl font-bold mb-4">New Movies</h3>
-          
+        <div id="main-section-new" class="main-section <%= firstVisibleTab === 0 ? '' : 'hidden' %>">
           <!-- Time Period Tabs for New Movies -->
           <div class="mb-4 border-b border-gray-200">
             <nav class="flex space-x-8" aria-label="Time Periods">
@@ -123,9 +147,7 @@
 
       <!-- Existing Movies Section -->
       <% if (hasExistingMovies) { %>
-        <div class="mb-8">
-          <h3 class="text-xl font-bold mb-4">Existing Movies</h3>
-          
+        <div id="main-section-existing" class="main-section <%= firstVisibleTab === 1 ? '' : 'hidden' %>">
           <!-- Time Period Tabs for Existing Movies -->
           <div class="mb-4 border-b border-gray-200">
             <nav class="flex space-x-8" aria-label="Time Periods">
@@ -171,8 +193,7 @@
 
       <!-- Unmatched Items Section -->
       <% if (hasUnmatched) { %>
-        <div class="mb-8">
-          <h3 class="text-xl font-bold mb-4">Unmatched Items</h3>
+        <div id="main-section-unmatched" class="main-section <%= firstVisibleTab === 2 ? '' : 'hidden' %>">
           <% unmatchedItems.forEach(movie => { %>
             <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
           <% }); %>
@@ -285,6 +306,24 @@
           if (onCancel) onCancel();
         }
       });
+    }
+
+    // Main section tab switching
+    function showMainSection(section) {
+      // Hide all main sections
+      document.querySelectorAll('.main-section').forEach(section => {
+        section.classList.add('hidden');
+      });
+      // Show selected section
+      document.getElementById(`main-section-${section}`).classList.remove('hidden');
+      
+      // Update tab styles
+      document.querySelectorAll('[id^="main-tab-"]').forEach(tab => {
+        tab.classList.remove('border-blue-500', 'text-blue-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+      });
+      document.getElementById(`main-tab-${section}`).classList.remove('border-transparent', 'text-gray-500');
+      document.getElementById(`main-tab-${section}`).classList.add('border-blue-500', 'text-blue-600');
     }
 
     // Tab switching for New Movies
@@ -523,33 +562,6 @@
       }
     }
 
-    async function overrideTmdbIdForMovie(releaseId) {
-      const tmdbId = prompt('Enter TMDB ID:');
-      if (!tmdbId) return;
-      
-      const id = parseInt(tmdbId, 10);
-      if (isNaN(id)) {
-        showToast('Invalid TMDB ID', 'error');
-        return;
-      }
-      
-      try {
-        const res = await fetch(`/actions/${releaseId}/override-tmdb`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tmdbId: id }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast('TMDB ID override saved!', 'success');
-          setTimeout(() => location.reload(), 1000);
-        } else {
-          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
-        }
-      } catch (error) {
-        showToast('Error: ' + error.message, 'error');
-      }
-    }
   </script>
 </body>
 </html>

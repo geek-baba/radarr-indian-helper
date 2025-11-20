@@ -86,7 +86,22 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
         let existingFileAttributes: string | undefined;
         let radarrHistory: string | undefined;
 
-        // Step 1: If RSS feed has IMDB ID but no TMDB ID, try to get TMDB ID from IMDB ID
+        // Step 1: TMDB ID is PRIMARY - if we have TMDB ID, extract IMDB ID from TMDB
+        if (tmdbId && tmdbApiKey && !imdbId) {
+          try {
+            const tmdbMovie = await tmdbClient.getMovie(tmdbId);
+            if (tmdbMovie && tmdbMovie.imdb_id) {
+              imdbId = tmdbMovie.imdb_id;
+              tmdbTitle = tmdbMovie.title;
+              tmdbOriginalLanguage = tmdbMovie.original_language;
+            }
+          } catch (error) {
+            // Ignore - we still have TMDB ID which is what matters
+          }
+        }
+
+        // Step 1b: If we have IMDB ID but no TMDB ID, try to get TMDB ID from IMDB ID (secondary path)
+        // Note: This is less ideal since Radarr requires TMDB ID
         if (!tmdbId && imdbId && tmdbApiKey) {
           try {
             const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
@@ -95,13 +110,13 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
               tmdbTitle = tmdbMovie.title;
               tmdbOriginalLanguage = tmdbMovie.original_language;
             } else {
-              needsAttention = true;
+              needsAttention = true; // Have IMDB but no TMDB - won't work with Radarr
             }
           } catch (error) {
             needsAttention = true;
           }
         } else if (!tmdbId && imdbId) {
-          needsAttention = true;
+          needsAttention = true; // Have IMDB but no TMDB and no API key
         }
 
         // Step 2: If we have TMDB ID, look up in synced Radarr movies
@@ -190,7 +205,7 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
           }
         }
 
-        // Step 3: If we don't have TMDB ID but have a clean title, try TMDB API search
+        // Step 2: If we don't have TMDB ID but have a clean title, try TMDB API search FIRST (primary)
         if (!tmdbId && tmdbApiKey && item.clean_title) {
           try {
             const tmdbMovie = await tmdbClient.searchMovie(item.clean_title, item.year || undefined);
@@ -209,6 +224,11 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
                 tmdbTitle = tmdbMovie.title;
                 tmdbOriginalLanguage = tmdbMovie.original_language;
 
+                // Extract IMDB ID from TMDB movie (primary source)
+                if (!imdbId && tmdbMovie.imdb_id) {
+                  imdbId = tmdbMovie.imdb_id;
+                }
+
                 // Check synced Radarr again with new TMDB ID
                 if (tmdbId) {
                   const syncedRadarrMovie = getSyncedRadarrMovieByTmdbId(tmdbId);
@@ -224,13 +244,30 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
           }
         }
 
-        // Step 4: If still no TMDB ID, try IMDB/OMDB search
+        // Step 3: If still no TMDB ID, try IMDB/OMDB search as last resort
+        // (Note: If we find IMDB but not TMDB, movie won't work with Radarr)
         if (!tmdbId && item.clean_title) {
           try {
             const imdbResult = await imdbClient.searchMovie(item.clean_title, item.year || undefined);
             if (imdbResult) {
               imdbId = imdbResult.imdbId;
-              needsAttention = true;
+              // Try to get TMDB ID from IMDB ID
+              if (tmdbApiKey) {
+                try {
+                  const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                  if (tmdbMovie) {
+                    tmdbId = tmdbMovie.id;
+                    tmdbTitle = tmdbMovie.title;
+                    tmdbOriginalLanguage = tmdbMovie.original_language;
+                  } else {
+                    needsAttention = true; // Have IMDB but no TMDB
+                  }
+                } catch (error) {
+                  needsAttention = true;
+                }
+              } else {
+                needsAttention = true; // Have IMDB but no TMDB and no API key
+              }
             }
           } catch (error) {
             // Continue

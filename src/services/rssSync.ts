@@ -118,77 +118,24 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
               console.log(`    Clean title: "${cleanTitle}", Year: ${year || 'none'}`);
 
               // Enrich with TMDB/IMDB IDs if missing
-              // Priority: TMDB (primary), IMDB (secondary)
+              // Priority: TMDB ID is PRIMARY (Radarr uses TMDB ID exclusively)
+              // If TMDB ID is found, extract IMDB ID from TMDB (not the other way around)
               
-              // Step 1: If we have IMDB ID but no TMDB ID, try to get TMDB ID from IMDB ID
-              if (!tmdbId && imdbId && tmdbApiKey) {
+              // Step 1: If we have TMDB ID, extract IMDB ID from TMDB (primary path)
+              if (tmdbId && tmdbApiKey && !imdbId) {
                 try {
-                  console.log(`    Looking up TMDB ID for IMDB ID ${imdbId}`);
-                  const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
-                  if (tmdbMovie) {
-                    tmdbId = tmdbMovie.id;
-                    console.log(`    ✓ Found TMDB ID ${tmdbId} for IMDB ID ${imdbId}`);
+                  console.log(`    Extracting IMDB ID from TMDB ID ${tmdbId}`);
+                  const tmdbMovie = await tmdbClient.getMovie(tmdbId);
+                  if (tmdbMovie && tmdbMovie.imdb_id) {
+                    imdbId = tmdbMovie.imdb_id;
+                    console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie ${tmdbId}`);
                   }
                 } catch (error) {
-                  console.log(`    ✗ Failed to find TMDB ID for IMDB ID ${imdbId}:`, error);
+                  console.log(`    ✗ Failed to get IMDB ID from TMDB ID ${tmdbId}:`, error);
                 }
               }
 
-              // Step 2: If we don't have IMDB ID but have clean title, try OMDB/IMDB search
-              if (!imdbId && cleanTitle && (omdbApiKey || true)) { // OMDB works without key but has rate limits
-                try {
-                  console.log(`    Searching IMDB (OMDB) for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
-                  const imdbResult = await imdbClient.searchMovie(cleanTitle, year || undefined);
-                  if (imdbResult) {
-                    imdbId = imdbResult.imdbId;
-                    console.log(`    ✓ Found IMDB ID ${imdbId} for "${cleanTitle}" (OMDB returned: "${imdbResult.title}" ${imdbResult.year})`);
-                    
-                    // If we now have IMDB ID but still no TMDB ID, try to get TMDB ID
-                    if (!tmdbId && tmdbApiKey) {
-                      try {
-                        const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
-                        if (tmdbMovie) {
-                          tmdbId = tmdbMovie.id;
-                          console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
-                        }
-                      } catch (error) {
-                        console.log(`    ✗ Failed to get TMDB ID from IMDB ID ${imdbId}:`, error);
-                      }
-                    }
-                  } else {
-                    console.log(`    ✗ OMDB search returned no results for "${cleanTitle}" ${year ? `(${year})` : ''}`);
-                  }
-                } catch (error: any) {
-                  console.log(`    ✗ Failed to find IMDB ID via OMDB for "${cleanTitle}":`, error?.message || error);
-                }
-              }
-
-              // Step 2b: If still no IMDB ID, try Brave Search as fallback
-              if (!imdbId && cleanTitle && braveApiKey) {
-                try {
-                  const braveImdbId = await braveClient.searchForImdbId(cleanTitle, year || undefined);
-                  if (braveImdbId) {
-                    imdbId = braveImdbId;
-                    
-                    // If we now have IMDB ID but still no TMDB ID, try to get TMDB ID
-                    if (!tmdbId && tmdbApiKey) {
-                      try {
-                        const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
-                        if (tmdbMovie) {
-                          tmdbId = tmdbMovie.id;
-                          console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
-                        }
-                      } catch (error) {
-                        // Ignore
-                      }
-                    }
-                  }
-                } catch (error) {
-                  console.log(`    ✗ Failed to find IMDB ID via Brave for "${cleanTitle}":`, error);
-                }
-              }
-
-              // Step 3: If we still don't have TMDB ID but have clean title, try TMDB search
+              // Step 2: If we don't have TMDB ID but have clean title, try TMDB search FIRST (primary)
               if (!tmdbId && cleanTitle && tmdbApiKey) {
                 try {
                   console.log(`    Searching TMDB for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
@@ -209,7 +156,7 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                       tmdbId = tmdbMovie.id;
                       console.log(`    ✓ Found TMDB ID ${tmdbId} for "${cleanTitle}"`);
                       
-                      // If TMDB movie has IMDB ID and we don't have it yet, use it
+                      // Extract IMDB ID from TMDB movie (primary source)
                       if (!imdbId && tmdbMovie.imdb_id) {
                         imdbId = tmdbMovie.imdb_id;
                         console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie`);
@@ -223,7 +170,7 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                 }
               }
 
-              // Step 3b: If still no TMDB ID and we have normalized title, try with normalized title
+              // Step 2b: If still no TMDB ID and we have normalized title, try with normalized title
               if (!tmdbId && tmdbApiKey && parsed.normalized_title && parsed.normalized_title !== cleanTitle) {
                 try {
                   console.log(`    Searching TMDB (normalized) for: "${parsed.normalized_title}" ${year ? `(${year})` : ''}`);
@@ -243,7 +190,7 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                       tmdbId = tmdbMovie.id;
                       console.log(`    ✓ Found TMDB ID ${tmdbId} for "${parsed.normalized_title}"`);
                       
-                      // If TMDB movie has IMDB ID and we don't have it yet, use it
+                      // Extract IMDB ID from TMDB movie
                       if (!imdbId && tmdbMovie.imdb_id) {
                         imdbId = tmdbMovie.imdb_id;
                         console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie`);
@@ -255,14 +202,15 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                 }
               }
 
-              // Step 3c: If still no TMDB ID, try Brave Search as final fallback
+              // Step 2c: If still no TMDB ID, try Brave Search as fallback for TMDB
               if (!tmdbId && cleanTitle && braveApiKey) {
                 try {
                   const braveTmdbId = await braveClient.searchForTmdbId(cleanTitle, year || undefined);
                   if (braveTmdbId) {
                     tmdbId = braveTmdbId;
+                    console.log(`    ✓ Found TMDB ID ${tmdbId} via Brave search`);
                     
-                    // If TMDB movie has IMDB ID and we don't have it yet, try to get it
+                    // Extract IMDB ID from TMDB movie
                     if (!imdbId && tmdbApiKey) {
                       try {
                         const tmdbMovie = await tmdbClient.getMovie(tmdbId);
@@ -277,6 +225,66 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                   }
                 } catch (error) {
                   console.log(`    ✗ Failed to find TMDB ID via Brave for "${cleanTitle}":`, error);
+                }
+              }
+
+              // Step 3: Only if we still don't have TMDB ID, try IMDB search as last resort
+              // (But note: if we find IMDB but not TMDB, the movie won't work with Radarr)
+              if (!tmdbId && !imdbId && cleanTitle && (omdbApiKey || true)) {
+                try {
+                  console.log(`    Searching IMDB (OMDB) for: "${cleanTitle}" ${year ? `(${year})` : ''} (fallback - will try to get TMDB from IMDB)`);
+                  const imdbResult = await imdbClient.searchMovie(cleanTitle, year || undefined);
+                  if (imdbResult) {
+                    imdbId = imdbResult.imdbId;
+                    console.log(`    ✓ Found IMDB ID ${imdbId} for "${cleanTitle}" (OMDB returned: "${imdbResult.title}" ${imdbResult.year})`);
+                    
+                    // Try to get TMDB ID from IMDB ID (secondary path - only if TMDB search failed)
+                    if (!tmdbId && tmdbApiKey) {
+                      try {
+                        const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                        if (tmdbMovie) {
+                          tmdbId = tmdbMovie.id;
+                          console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
+                        } else {
+                          console.log(`    ⚠ Found IMDB ID ${imdbId} but no TMDB ID - movie may not work with Radarr`);
+                        }
+                      } catch (error) {
+                        console.log(`    ⚠ Found IMDB ID ${imdbId} but failed to get TMDB ID - movie may not work with Radarr`);
+                      }
+                    }
+                  } else {
+                    console.log(`    ✗ OMDB search returned no results for "${cleanTitle}" ${year ? `(${year})` : ''}`);
+                  }
+                } catch (error: any) {
+                  console.log(`    ✗ Failed to find IMDB ID via OMDB for "${cleanTitle}":`, error?.message || error);
+                }
+              }
+
+              // Step 3b: If still no TMDB ID, try Brave Search for IMDB as last resort
+              if (!tmdbId && !imdbId && cleanTitle && braveApiKey) {
+                try {
+                  const braveImdbId = await braveClient.searchForImdbId(cleanTitle, year || undefined);
+                  if (braveImdbId) {
+                    imdbId = braveImdbId;
+                    console.log(`    ✓ Found IMDB ID ${imdbId} via Brave search`);
+                    
+                    // Try to get TMDB ID from IMDB ID
+                    if (!tmdbId && tmdbApiKey) {
+                      try {
+                        const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                        if (tmdbMovie) {
+                          tmdbId = tmdbMovie.id;
+                          console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
+                        } else {
+                          console.log(`    ⚠ Found IMDB ID ${imdbId} but no TMDB ID - movie may not work with Radarr`);
+                        }
+                      } catch (error) {
+                        console.log(`    ⚠ Found IMDB ID ${imdbId} but failed to get TMDB ID - movie may not work with Radarr`);
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.log(`    ✗ Failed to find IMDB ID via Brave for "${cleanTitle}":`, error);
                 }
               }
             }

@@ -271,6 +271,70 @@ router.post('/rss/backfill-ids', async (req: Request, res: Response) => {
   }
 });
 
+// Override TMDB ID for RSS item
+router.post('/rss/override-tmdb/:id', async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.id, 10);
+    const { tmdbId } = req.body;
+    
+    if (!tmdbId || isNaN(parseInt(tmdbId, 10))) {
+      return res.status(400).json({ success: false, error: 'Valid TMDB ID is required' });
+    }
+
+    // Get the RSS item from database
+    const item = db.prepare('SELECT * FROM rss_feed_items WHERE id = ?').get(itemId) as any;
+    
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'RSS item not found' });
+    }
+
+    // Get API keys
+    const allSettings = settingsModel.getAll();
+    const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value;
+    
+    if (!tmdbApiKey) {
+      return res.status(400).json({ success: false, error: 'TMDB API key not configured' });
+    }
+
+    tmdbClient.setApiKey(tmdbApiKey);
+
+    // Verify the TMDB ID by fetching movie details
+    const tmdbMovie = await tmdbClient.getMovie(parseInt(tmdbId, 10));
+    if (!tmdbMovie) {
+      return res.status(404).json({ success: false, error: 'TMDB ID not found' });
+    }
+
+    // Extract IMDB ID from TMDB movie
+    let imdbId = item.imdb_id;
+    if (tmdbMovie.imdb_id) {
+      imdbId = tmdbMovie.imdb_id;
+    }
+
+    // Update the RSS item with the new TMDB ID and IMDB ID
+    db.prepare(`
+      UPDATE rss_feed_items 
+      SET tmdb_id = ?, imdb_id = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(parseInt(tmdbId, 10), imdbId, itemId);
+
+    console.log(`Updated RSS item ${itemId} with TMDB ID ${tmdbId} and IMDB ID ${imdbId || 'none'}`);
+
+    res.json({ 
+      success: true, 
+      message: `TMDB ID updated to ${tmdbId} (${tmdbMovie.title})`,
+      tmdbId: parseInt(tmdbId, 10),
+      imdbId: imdbId,
+      tmdbTitle: tmdbMovie.title,
+    });
+  } catch (error: any) {
+    console.error('Override TMDB ID for RSS item error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to override TMDB ID: ' + (error?.message || 'Unknown error')
+    });
+  }
+});
+
 // Match single RSS item
 router.post('/rss/match/:id', async (req: Request, res: Response) => {
   try {
