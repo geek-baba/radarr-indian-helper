@@ -5,6 +5,7 @@ import { parseRSSItem } from '../rss/parseRelease';
 import tmdbClient from '../tmdb/client';
 import imdbClient from '../imdb/client';
 import { settingsModel } from '../models/settings';
+import { syncProgress } from './syncProgress';
 
 const parser = new Parser();
 
@@ -34,6 +35,8 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
 
   try {
     console.log('Starting RSS feeds sync...');
+    syncProgress.start('rss', 0);
+    syncProgress.update('Initializing...', 0);
     
     // Get API keys for TMDB/OMDB lookups
     const allSettings = settingsModel.getAll();
@@ -51,10 +54,13 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
     stats.totalFeeds = feeds.length;
 
     console.log(`Found ${feeds.length} enabled RSS feeds`);
+    syncProgress.update(`Found ${feeds.length} enabled RSS feeds`, 0, feeds.length);
 
-    for (const feed of feeds) {
+    for (let feedIndex = 0; feedIndex < feeds.length; feedIndex++) {
+      const feed = feeds[feedIndex];
       try {
         console.log(`Syncing feed: ${feed.name} (${feed.url})`);
+        syncProgress.update(`Syncing feed: ${feed.name}...`, feedIndex, feeds.length);
         const feedData = await parser.parseURL(feed.url);
 
         if (!feedData.items || feedData.items.length === 0) {
@@ -314,6 +320,7 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
         transaction();
         stats.feedsProcessed++;
         console.log(`Feed ${feed.name}: Synced ${feedData.items.length} items`);
+        syncProgress.update(`Completed ${feed.name} (${feedData.items.length} items)`, feedIndex + 1, feeds.length, stats.errors.length);
       } catch (feedError: any) {
         stats.errors.push({
           feedId: feed.id!,
