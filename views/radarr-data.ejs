@@ -119,6 +119,8 @@
       const buttonText = document.getElementById('syncButtonText');
       const syncIcon = document.getElementById('syncIcon');
       const progressContainer = document.getElementById('progressContainer');
+      const progressStep = document.getElementById('progressStep');
+      const progressBar = document.getElementById('progressBar');
       
       // Disable button
       button.disabled = true;
@@ -128,6 +130,8 @@
       
       // Show progress bar
       progressContainer.classList.remove('hidden');
+      progressStep.textContent = 'Starting sync...';
+      progressBar.style.width = '0%';
       
       try {
         const response = await fetch('/data/radarr/sync', {
@@ -137,17 +141,27 @@
         
         const data = await response.json();
         if (!data.success) {
-          alert('Error: ' + (data.message || 'Failed to start sync'));
-          resetButton();
+          progressStep.textContent = 'Error: ' + (data.message || 'Failed to start sync');
+          progressStep.classList.add('text-red-600', 'font-semibold');
+          progressBar.classList.remove('bg-blue-600');
+          progressBar.classList.add('bg-red-600');
+          progressBar.style.width = '100%';
+          setTimeout(() => resetButton(), 5000);
           return;
         }
         
-        // Start polling for progress
+        // Start polling for progress immediately
         progressInterval = setInterval(checkProgress, 500);
+        // Also check immediately
+        checkProgress();
       } catch (error) {
         console.error('Sync error:', error);
-        alert('Error starting sync: ' + error.message);
-        resetButton();
+        progressStep.textContent = 'Error starting sync: ' + (error.message || 'Unknown error');
+        progressStep.classList.add('text-red-600', 'font-semibold');
+        progressBar.classList.remove('bg-blue-600');
+        progressBar.classList.add('bg-red-600');
+        progressBar.style.width = '100%';
+        setTimeout(() => resetButton(), 5000);
       }
     }
 
@@ -167,18 +181,39 @@
           progressPercent.textContent = progress.progress + '%';
           progressStep.textContent = progress.currentStep || 'Processing...';
           
+          // Show error in red if there's an error
+          if (progress.currentStep && progress.currentStep.startsWith('Error:')) {
+            progressStep.classList.add('text-red-600', 'font-semibold');
+            progressBar.classList.remove('bg-blue-600');
+            progressBar.classList.add('bg-red-600');
+          } else {
+            progressStep.classList.remove('text-red-600', 'font-semibold');
+            progressBar.classList.remove('bg-red-600');
+            progressBar.classList.add('bg-blue-600');
+          }
+          
           if (progress.total > 0) {
             progressStats.textContent = `Processed: ${progress.processed} / ${progress.total}${progress.errors > 0 ? ` | Errors: ${progress.errors}` : ''}`;
+          } else if (progress.currentStep) {
+            progressStats.textContent = progress.currentStep;
           }
           
           if (!progress.isRunning) {
             clearInterval(progressInterval);
             progressInterval = null;
             
-            // Wait a moment then reload page to show updated data
-            setTimeout(() => {
-              window.location.reload();
-            }, 2000);
+            // If there was an error, don't reload immediately - let user see the error
+            if (progress.currentStep && progress.currentStep.startsWith('Error:')) {
+              // Keep error visible for 10 seconds, then allow manual reload
+              setTimeout(() => {
+                resetButton();
+              }, 10000);
+            } else {
+              // Success - reload after 2 seconds
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            }
           }
         } else {
           // No progress data, might be done
@@ -188,6 +223,11 @@
         }
       } catch (error) {
         console.error('Progress check error:', error);
+        const progressStep = document.getElementById('progressStep');
+        if (progressStep) {
+          progressStep.textContent = 'Error checking progress: ' + error.message;
+          progressStep.classList.add('text-red-600', 'font-semibold');
+        }
       }
     }
 

@@ -36,24 +36,36 @@ router.post('/radarr/sync', async (req: Request, res: Response) => {
     // Start sync in background
     (async () => {
       try {
+        console.log('Starting Radarr sync from API endpoint...');
         await syncRadarrMovies();
+        console.log('Radarr sync completed successfully');
         
         // Clear progress after 5 seconds
         setTimeout(() => {
           syncProgress.clear();
         }, 5000);
       } catch (error: any) {
-        console.error('Radarr sync error:', error);
+        console.error('Radarr sync error in background task:', error);
         const errorMessage = error?.message || error?.toString() || 'Unknown error';
+        console.error('Error message:', errorMessage);
         syncProgress.update(`Error: ${errorMessage}`, 0, 0, 1);
         syncProgress.complete();
+        
+        // Keep error visible for 30 seconds
+        setTimeout(() => {
+          syncProgress.clear();
+        }, 30000);
       }
     })();
 
     res.json({ success: true, message: 'Radarr sync started' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Start Radarr sync error:', error);
-    res.status(500).json({ error: 'Failed to start Radarr sync' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to start Radarr sync',
+      message: error?.message || 'Unknown error'
+    });
   }
 });
 

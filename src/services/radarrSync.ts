@@ -29,10 +29,22 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
     syncProgress.update('Connecting to Radarr...', 0);
     
     // Update client config in case it changed
+    console.log('Updating Radarr client configuration...');
     radarrClient.updateConfig();
     
-    syncProgress.update('Fetching movies from Radarr...', 0);
-    const movies = await radarrClient.getAllMovies();
+    syncProgress.update('Fetching movies from Radarr API...', 0);
+    console.log('Calling getAllMovies()...');
+    
+    let movies: RadarrMovie[];
+    try {
+      movies = await radarrClient.getAllMovies();
+      console.log(`getAllMovies() returned ${movies?.length || 0} movies`);
+    } catch (error: any) {
+      console.error('Error in getAllMovies():', error);
+      const errorMessage = error?.message || error?.toString() || 'Unknown error';
+      throw new Error(`Failed to fetch movies: ${errorMessage}`);
+    }
+    
     stats.totalMovies = movies.length;
 
     console.log(`Found ${movies.length} movies in Radarr`);

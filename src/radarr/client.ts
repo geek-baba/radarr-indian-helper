@@ -44,12 +44,21 @@ class RadarrClient {
       const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value;
       const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key')?.value;
       
+      console.error('Radarr client not initialized. URL:', radarrApiUrl ? 'Set' : 'Not set', 'Key:', radarrApiKey ? 'Set' : 'Not set');
+      
       if (!radarrApiUrl || !radarrApiKey) {
         throw new Error('Radarr API not configured. Please configure Radarr API URL and Key in Settings page.');
       } else {
         throw new Error('Radarr client initialization failed. Please check your Radarr API URL and Key in Settings.');
       }
     }
+    
+    // Verify client has valid baseURL and API key
+    if (!this.client.defaults.baseURL || !this.client.defaults.headers?.['X-Api-Key']) {
+      console.error('Radarr client has invalid configuration. baseURL:', this.client.defaults.baseURL, 'API Key:', this.client.defaults.headers?.['X-Api-Key'] ? 'Set' : 'Not set');
+      throw new Error('Radarr client configuration is invalid. Please check your Radarr API URL and Key in Settings.');
+    }
+    
     return this.client;
   }
 
@@ -87,11 +96,30 @@ class RadarrClient {
 
   async getAllMovies(): Promise<RadarrMovie[]> {
     try {
-      const response = await this.ensureClient().get<RadarrMovie[]>('/movie');
+      const client = this.ensureClient();
+      console.log('Making request to:', client.defaults.baseURL + '/movie');
+      const response = await client.get<RadarrMovie[]>('/movie');
+      console.log('Response status:', response.status, 'Data length:', response.data?.length || 0);
       return response.data || [];
     } catch (error: any) {
       console.error('Radarr get all movies error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      console.error('Error response:', error?.response?.data);
+      console.error('Error status:', error?.response?.status);
+      console.error('Error message:', error?.message);
+      
+      let errorMessage = 'Unknown error';
+      if (error?.response?.status === 401) {
+        errorMessage = 'Unauthorized - Invalid API key. Please check your Radarr API key in Settings.';
+      } else if (error?.response?.status === 404) {
+        errorMessage = 'Not found - Invalid Radarr API URL. Please check your Radarr API URL in Settings.';
+      } else if (error?.code === 'ECONNREFUSED' || error?.code === 'ENOTFOUND') {
+        errorMessage = `Connection failed - Cannot reach Radarr at ${error?.config?.baseURL || 'the configured URL'}. Please check your Radarr API URL and ensure Radarr is running.`;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       throw new Error(`Failed to fetch movies from Radarr: ${errorMessage}`);
     }
   }
