@@ -28,10 +28,22 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
   const yearMatchForExtraction = title.match(/\b(19|20)\d{2}\b/);
   const year = yearMatchForExtraction ? parseInt(yearMatchForExtraction[0], 10) : undefined;
 
-  // Try to extract TMDB ID and IMDB ID from description
+  // Try to extract TMDB ID and IMDB ID from description/content
   let tmdbId: number | undefined;
   let imdbId: string | undefined;
-  const description = item.description || item.content || '';
+  const description = item.description || item.content || item.contentSnippet || '';
+  let publishedAt = item.pubDate;
+  const addedMatch = description.match(/Added:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}\s+[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
+  if (addedMatch) {
+    const addedString = addedMatch[1].trim().replace(' ', 'T');
+    const addedDate = new Date(`${addedString}Z`);
+    if (!isNaN(addedDate.getTime())) {
+      publishedAt = addedDate.toISOString();
+    }
+  }
+  if (!publishedAt) {
+    publishedAt = new Date().toISOString();
+  }
   
   // Try multiple patterns to find TMDB ID
   const tmdbMatch = description.match(/themoviedb\.org\/movie\/(\d+)/i) || 
@@ -49,6 +61,12 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
   if (imdbMatch) {
     imdbId = imdbMatch[1];
     console.log(`  Extracted IMDB ID ${imdbId} from RSS feed for: ${title}`);
+  } else {
+    const imdbFallback = description.match(/(tt\d{7,})/i);
+    if (imdbFallback) {
+      imdbId = imdbFallback[1];
+      console.log(`  Extracted IMDB ID (fallback) ${imdbId} from RSS feed for: ${title}`);
+    }
   }
 
   // Try to extract size from description (RSS feeds often have size in description)
@@ -151,7 +169,7 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
     codec: parsed.codec,
     audio: parsed.audio,
     rss_size_mb: sizeMb || parsed.sizeMb,
-    published_at: item.pubDate || new Date().toISOString(),
+    published_at: publishedAt,
     audio_languages: parsed.audioLanguages ? JSON.stringify(parsed.audioLanguages) : undefined,
     parsed,
   };
