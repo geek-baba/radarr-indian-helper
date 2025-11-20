@@ -46,12 +46,25 @@ export function parseRSSItem(item: RSSItem, feedId: number, sourceSite: string) 
   }
   
   // Try multiple patterns to find TMDB ID
+  // Be strict: only match actual TMDB URLs or explicit "TMDB ID:" patterns
+  // Avoid matching random numbers that happen to be after "TMDB"
   const tmdbMatch = description.match(/themoviedb\.org\/movie\/(\d+)/i) || 
-                    description.match(/TMDB\s+Link.*?(\d{4,})/i) ||
-                    description.match(/TMDB.*?(\d{4,})/i);
+                    description.match(/TMDB\s+ID\s*[:\-]?\s*(\d+)/i) ||
+                    description.match(/TMDB\s+Link[:\s]+.*?(\d+)/i) ||
+                    description.match(/tmdb[:\s]+(\d+)/i);
   if (tmdbMatch) {
-    tmdbId = parseInt(tmdbMatch[1], 10);
-    console.log(`  Extracted TMDB ID ${tmdbId} from RSS feed for: ${title}`);
+    const extractedId = parseInt(tmdbMatch[1], 10);
+    // Validate: TMDB IDs are typically 4-8 digits, but be reasonable
+    // Also log a warning if the ID seems suspicious (very low numbers might be old/incorrect)
+    if (extractedId > 0 && extractedId < 100000000) {
+      tmdbId = extractedId;
+      console.log(`  Extracted TMDB ID ${tmdbId} from RSS feed for: ${title}`);
+      if (extractedId < 10000) {
+        console.log(`  ⚠ WARNING: TMDB ID ${tmdbId} seems unusually low - may be incorrect`);
+      }
+    } else {
+      console.log(`  ⚠ Ignored invalid TMDB ID ${extractedId} from RSS feed (out of range)`);
+    }
   }
   
   // Try to extract IMDB ID from description

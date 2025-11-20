@@ -110,7 +110,18 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
             const cleanTitle = (parsed as any).clean_title || existingItem?.clean_title || null;
             const year = parsed.year || existingItem?.year || null;
 
+            // Log where IDs came from
+            if (tmdbId) {
+              const source = (parsed as any).tmdb_id ? 'RSS feed' : 'database';
+              console.log(`    TMDB ID ${tmdbId} from ${source}`);
+            }
+            if (imdbId) {
+              const source = (parsed as any).imdb_id ? 'RSS feed' : 'database';
+              console.log(`    IMDB ID ${imdbId} from ${source}`);
+            }
+
             // Always try to enrich if IDs are missing (for both new and existing items)
+            // Also validate existing IDs to ensure they're correct
             const needsEnrichment = !tmdbId || !imdbId;
 
             if (needsEnrichment) {
