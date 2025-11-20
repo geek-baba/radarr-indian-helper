@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getSyncedRadarrMovies, getLastRadarrSync, syncRadarrMovies } from '../services/radarrSync';
-import { getSyncedRssItems, getSyncedRssItemsByFeed, getLastRssSync, syncRssFeeds } from '../services/rssSync';
+import { getSyncedRssItems, getSyncedRssItemsByFeed, getLastRssSync, syncRssFeeds, backfillMissingIds } from '../services/rssSync';
 import { feedsModel } from '../models/feeds';
 import { syncProgress } from '../services/syncProgress';
 import { logStorage } from '../services/logStorage';
@@ -217,6 +217,57 @@ router.post('/logs/clear', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Clear logs error:', error);
     res.status(500).json({ error: 'Failed to clear logs' });
+  }
+});
+
+// Backfill missing IDs for all RSS items
+router.post('/rss/backfill-ids', async (req: Request, res: Response) => {
+  try {
+    // Check if sync is already running
+    const current = syncProgress.get();
+    if (current && current.isRunning && current.type === 'rss') {
+      return res.json({ success: false, message: 'RSS sync is already in progress' });
+    }
+
+    // Start backfill in background
+    (async () => {
+      try {
+        console.log('Starting backfill of missing IDs from API endpoint...');
+        syncProgress.start('rss', 0);
+        syncProgress.update('Starting backfill...', 0);
+        
+        const stats = await backfillMissingIds();
+        
+        syncProgress.update('Backfill completed', stats.processed, stats.processed, stats.errors);
+        syncProgress.complete();
+        
+        console.log('Backfill completed successfully');
+        
+        // Clear progress after 5 seconds
+        setTimeout(() => {
+          syncProgress.clear();
+        }, 5000);
+      } catch (error: any) {
+        console.error('Backfill error in background task:', error);
+        const errorMessage = error?.message || error?.toString() || 'Unknown error';
+        syncProgress.update(`Error: ${errorMessage}`, 0, 0, 1);
+        syncProgress.complete();
+        
+        // Keep error visible for 30 seconds
+        setTimeout(() => {
+          syncProgress.clear();
+        }, 30000);
+      }
+    })();
+
+    res.json({ success: true, message: 'Backfill started' });
+  } catch (error: any) {
+    console.error('Start backfill error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to start backfill',
+      message: error?.message || 'Unknown error'
+    });
   }
 });
 
