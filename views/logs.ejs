@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logs - Radarr Indian Helper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+    .toast-enter {
+      animation: slideIn 0.3s ease-out;
+    }
+    .toast-exit {
+      animation: slideOut 0.3s ease-in;
+    }
+    .log-entry {
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .log-entry.log { color: #374151; }
+    .log-entry.info { color: #2563eb; }
+    .log-entry.warn { color: #d97706; }
+    .log-entry.error { color: #dc2626; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <%- include('partials/sidebar', { currentPage: 'logs' }) %>
+  
+  <main class="ml-64 p-8">
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <h2 class="text-2xl font-bold">Application Logs</h2>
+          <p class="text-sm text-gray-600 mt-1">
+            Total logs: <span id="totalLogs"><%= totalLogs %></span>
+          </p>
+        </div>
+        <div class="flex items-center gap-4">
+          <button 
+            onclick="clearLogs()" 
+            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Clear Logs
+          </button>
+          <label class="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              id="autoRefresh" 
+              checked
+              onchange="toggleAutoRefresh()"
+              class="rounded"
+            >
+            <span class="text-sm">Auto-refresh (5s)</span>
+          </label>
+        </div>
+      </div>
+      
+      <!-- Filter -->
+      <div class="bg-white rounded-lg shadow p-4 mb-4">
+        <div class="flex items-center gap-4">
+          <label class="text-sm font-medium">Filter:</label>
+          <input 
+            type="text" 
+            id="filterInput" 
+            value="<%= filter %>"
+            placeholder="Search logs..."
+            onkeyup="filterLogs()"
+            class="flex-1 border rounded px-3 py-2"
+          >
+          <button 
+            onclick="filterLogs()" 
+            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs Container -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+      <div id="logsContainer" class="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+        <% logs.forEach(log => { %>
+          <div class="log-entry <%= log.level %> mb-1">
+            <span class="text-gray-500 text-xs">
+              <%= new Date(log.timestamp).toLocaleString() %>
+            </span>
+            <span class="ml-2"><%= log.message %></span>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <script>
+    let autoRefreshInterval = null;
+
+    function showToast(message, type = 'info', duration = 5000) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const bgColors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500',
+      };
+      
+      const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ',
+      };
+      
+      toast.className = `${bgColors[type] || bgColors.info} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 min-w-[300px] max-w-md toast-enter`;
+      toast.innerHTML = `
+        <span class="text-xl font-bold">${icons[type] || icons.info}</span>
+        <span class="flex-1">${message}</span>
+        <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200 font-bold text-xl">&times;</button>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.classList.remove('toast-enter');
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    function filterLogs() {
+      const filter = document.getElementById('filterInput').value;
+      const url = new URL(window.location.href);
+      if (filter) {
+        url.searchParams.set('filter', filter);
+      } else {
+        url.searchParams.delete('filter');
+      }
+      window.location.href = url.toString();
+    }
+
+    function clearLogs() {
+      if (!confirm('Are you sure you want to clear all logs?')) {
+        return;
+      }
+
+      fetch('/data/logs/clear', {
+        method: 'POST',
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          showToast('Logs cleared successfully', 'success');
+          setTimeout(() => window.location.reload(), 500);
+        } else {
+          showToast('Error clearing logs', 'error');
+        }
+      })
+      .catch(error => {
+        showToast('Error: ' + error.message, 'error');
+      });
+    }
+
+    function refreshLogs() {
+      const filter = document.getElementById('filterInput').value;
+      const url = `/data/logs/api?limit=500${filter ? '&filter=' + encodeURIComponent(filter) : ''}`;
+      
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const container = document.getElementById('logsContainer');
+            const totalLogsEl = document.getElementById('totalLogs');
+            
+            totalLogsEl.textContent = data.totalLogs;
+            
+            container.innerHTML = data.logs.map(log => {
+              const timestamp = new Date(log.timestamp).toLocaleString();
+              return `<div class="log-entry ${log.level} mb-1">
+                <span class="text-gray-500 text-xs">${timestamp}</span>
+                <span class="ml-2">${escapeHtml(log.message)}</span>
+              </div>`;
+            }).join('');
+            
+            // Auto-scroll to bottom if user is near bottom
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            if (isNearBottom) {
+              container.scrollTop = container.scrollHeight;
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error refreshing logs:', error);
+        });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function toggleAutoRefresh() {
+      const checkbox = document.getElementById('autoRefresh');
+      if (checkbox.checked) {
+        autoRefreshInterval = setInterval(refreshLogs, 5000);
+      } else {
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+        }
+      }
+    }
+
+    // Start auto-refresh on page load
+    if (document.getElementById('autoRefresh').checked) {
+      autoRefreshInterval = setInterval(refreshLogs, 5000);
+    }
+
+    // Scroll to bottom on initial load
+    window.addEventListener('load', () => {
+      const container = document.getElementById('logsContainer');
+      container.scrollTop = container.scrollHeight;
+    });
+  </script>
+</body>
+</html>
+

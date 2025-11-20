@@ -130,6 +130,7 @@
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Published</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">TMDB ID</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IMDB ID</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -178,6 +179,34 @@
     let progressInterval = null;
 
     // Toast Notification System
+    async function matchItem(itemId) {
+      const button = document.getElementById(`matchBtn${itemId}`);
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Matching...';
+      
+      try {
+        const res = await fetch(`/data/rss/match/${itemId}`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          showToast(`Match completed! TMDB: ${data.tmdbId || 'not found'}, IMDB: ${data.imdbId || 'not found'}`, 'success');
+          // Reload page after 1 second to show updated IDs
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
     function showToast(message, type = 'info', duration = 5000) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');

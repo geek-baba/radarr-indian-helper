@@ -3,6 +3,13 @@ import { getSyncedRadarrMovies, getLastRadarrSync, syncRadarrMovies } from '../s
 import { getSyncedRssItems, getSyncedRssItemsByFeed, getLastRssSync, syncRssFeeds } from '../services/rssSync';
 import { feedsModel } from '../models/feeds';
 import { syncProgress } from '../services/syncProgress';
+import { logStorage } from '../services/logStorage';
+import db from '../db';
+import { parseRSSItem } from '../rss/parseRelease';
+import tmdbClient from '../tmdb/client';
+import imdbClient from '../imdb/client';
+import braveClient from '../brave/client';
+import { settingsModel } from '../models/settings';
 
 const router = Router();
 
@@ -161,6 +168,276 @@ router.get('/rss/sync/progress', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get RSS sync progress error:', error);
     res.status(500).json({ error: 'Failed to get RSS sync progress' });
+  }
+});
+
+// Logs page
+router.get('/logs', (req: Request, res: Response) => {
+  try {
+    const filter = req.query.filter as string || '';
+    const limit = parseInt(req.query.limit as string || '500', 10);
+    
+    const logs = filter 
+      ? logStorage.getLogsByFilter(filter, limit)
+      : logStorage.getLogs(limit);
+    
+    res.render('logs', {
+      logs,
+      filter,
+      totalLogs: logStorage.getCount(),
+    });
+  } catch (error) {
+    console.error('Logs page error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Get logs API (for auto-refresh)
+router.get('/logs/api', (req: Request, res: Response) => {
+  try {
+    const filter = req.query.filter as string || '';
+    const limit = parseInt(req.query.limit as string || '500', 10);
+    
+    const logs = filter 
+      ? logStorage.getLogsByFilter(filter, limit)
+      : logStorage.getLogs(limit);
+    
+    res.json({ success: true, logs, totalLogs: logStorage.getCount() });
+  } catch (error) {
+    console.error('Get logs API error:', error);
+    res.status(500).json({ error: 'Failed to get logs' });
+  }
+});
+
+// Clear logs
+router.post('/logs/clear', (req: Request, res: Response) => {
+  try {
+    logStorage.clear();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Clear logs error:', error);
+    res.status(500).json({ error: 'Failed to clear logs' });
+  }
+});
+
+// Match single RSS item
+router.post('/rss/match/:id', async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.id, 10);
+    
+    // Get the RSS item from database
+    const item = db.prepare('SELECT * FROM rss_feed_items WHERE id = ?').get(itemId) as any;
+    
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'RSS item not found' });
+    }
+
+    console.log(`Manual match triggered for RSS item: "${item.title}" (ID: ${itemId})`);
+
+    // Get API keys
+    const allSettings = settingsModel.getAll();
+    const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value;
+    const omdbApiKey = allSettings.find(s => s.key === 'omdb_api_key')?.value;
+    const braveApiKey = allSettings.find(s => s.key === 'brave_api_key')?.value;
+    
+    if (tmdbApiKey) tmdbClient.setApiKey(tmdbApiKey);
+    if (omdbApiKey) imdbClient.setApiKey(omdbApiKey);
+    if (braveApiKey) braveClient.setApiKey(braveApiKey);
+
+    // Re-parse the item to get clean title
+    const parsed = parseRSSItem({
+      title: item.title,
+      link: item.link,
+      guid: item.guid,
+      description: item.raw_data || '',
+    } as any, item.feed_id, item.feed_name);
+
+    let tmdbId = item.tmdb_id || (parsed as any).tmdb_id || null;
+    let imdbId = item.imdb_id || (parsed as any).imdb_id || null;
+    const cleanTitle = (parsed as any).clean_title || item.clean_title || null;
+    const year = parsed.year || item.year || null;
+
+    console.log(`  Current state: TMDB=${tmdbId || 'missing'}, IMDB=${imdbId || 'missing'}, Title="${cleanTitle}", Year=${year || 'none'}`);
+
+    // Run enrichment logic (same as in rssSync.ts)
+    const needsEnrichment = !tmdbId || !imdbId;
+
+    if (needsEnrichment) {
+      // Step 1: If we have IMDB ID but no TMDB ID
+      if (!tmdbId && imdbId && tmdbApiKey) {
+        try {
+          console.log(`    Looking up TMDB ID for IMDB ID ${imdbId}`);
+          const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+          if (tmdbMovie) {
+            tmdbId = tmdbMovie.id;
+            console.log(`    ✓ Found TMDB ID ${tmdbId} for IMDB ID ${imdbId}`);
+          }
+        } catch (error) {
+          console.log(`    ✗ Failed to find TMDB ID for IMDB ID ${imdbId}:`, error);
+        }
+      }
+
+      // Step 2: If we don't have IMDB ID, try OMDB
+      if (!imdbId && cleanTitle && (omdbApiKey || true)) {
+        try {
+          console.log(`    Searching IMDB (OMDB) for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
+          const imdbResult = await imdbClient.searchMovie(cleanTitle, year || undefined);
+          if (imdbResult) {
+            imdbId = imdbResult.imdbId;
+            console.log(`    ✓ Found IMDB ID ${imdbId} for "${cleanTitle}" (OMDB returned: "${imdbResult.title}" ${imdbResult.year})`);
+            
+            if (!tmdbId && tmdbApiKey) {
+              try {
+                const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                if (tmdbMovie) {
+                  tmdbId = tmdbMovie.id;
+                  console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
+                }
+              } catch (error) {
+                console.log(`    ✗ Failed to get TMDB ID from IMDB ID ${imdbId}:`, error);
+              }
+            }
+          } else {
+            console.log(`    ✗ OMDB search returned no results for "${cleanTitle}" ${year ? `(${year})` : ''}`);
+          }
+        } catch (error: any) {
+          console.log(`    ✗ Failed to find IMDB ID via OMDB for "${cleanTitle}":`, error?.message || error);
+        }
+      }
+
+      // Step 2b: Try Brave Search for IMDB ID
+      if (!imdbId && cleanTitle && braveApiKey) {
+        try {
+          const braveImdbId = await braveClient.searchForImdbId(cleanTitle, year || undefined);
+          if (braveImdbId) {
+            imdbId = braveImdbId;
+            if (!tmdbId && tmdbApiKey) {
+              try {
+                const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                if (tmdbMovie) {
+                  tmdbId = tmdbMovie.id;
+                  console.log(`    ✓ Found TMDB ID ${tmdbId} from IMDB ID ${imdbId}`);
+                }
+              } catch (error) {
+                // Ignore
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`    ✗ Failed to find IMDB ID via Brave for "${cleanTitle}":`, error);
+        }
+      }
+
+      // Step 3: Try TMDB search
+      if (!tmdbId && cleanTitle && tmdbApiKey) {
+        try {
+          console.log(`    Searching TMDB for: "${cleanTitle}" ${year ? `(${year})` : ''}`);
+          const tmdbMovie = await tmdbClient.searchMovie(cleanTitle, year || undefined);
+          if (tmdbMovie) {
+            console.log(`    TMDB search returned: "${tmdbMovie.title}" (ID: ${tmdbMovie.id}, Year: ${tmdbMovie.release_date ? new Date(tmdbMovie.release_date).getFullYear() : 'unknown'})`);
+            let isValidMatch = true;
+            if (year && tmdbMovie.release_date) {
+              const releaseYear = new Date(tmdbMovie.release_date).getFullYear();
+              if (releaseYear !== year) {
+                isValidMatch = false;
+                console.log(`    ✗ TMDB result year mismatch: ${releaseYear} vs ${year} - rejecting match`);
+              }
+            }
+            
+            if (isValidMatch) {
+              tmdbId = tmdbMovie.id;
+              console.log(`    ✓ Found TMDB ID ${tmdbId} for "${cleanTitle}"`);
+              
+              if (!imdbId && tmdbMovie.imdb_id) {
+                imdbId = tmdbMovie.imdb_id;
+                console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie`);
+              }
+            }
+          } else {
+            console.log(`    ✗ TMDB search returned no results for "${cleanTitle}" ${year ? `(${year})` : ''}`);
+          }
+        } catch (error: any) {
+          console.log(`    ✗ Failed to find TMDB ID for "${cleanTitle}":`, error?.message || error);
+        }
+      }
+
+      // Step 3b: Try normalized title
+      if (!tmdbId && tmdbApiKey && parsed.normalized_title && parsed.normalized_title !== cleanTitle) {
+        try {
+          console.log(`    Searching TMDB (normalized) for: "${parsed.normalized_title}" ${year ? `(${year})` : ''}`);
+          const tmdbMovie = await tmdbClient.searchMovie(parsed.normalized_title, year || undefined);
+          if (tmdbMovie) {
+            let isValidMatch = true;
+            if (year && tmdbMovie.release_date) {
+              const releaseYear = new Date(tmdbMovie.release_date).getFullYear();
+              if (releaseYear !== year) {
+                isValidMatch = false;
+                console.log(`    ✗ TMDB normalized title result year mismatch: ${releaseYear} vs ${year}`);
+              }
+            }
+            if (isValidMatch) {
+              tmdbId = tmdbMovie.id;
+              console.log(`    ✓ Found TMDB ID ${tmdbId} for normalized title "${parsed.normalized_title}"`);
+              if (!imdbId && tmdbMovie.imdb_id) {
+                imdbId = tmdbMovie.imdb_id;
+                console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie (normalized title)`);
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`    ✗ Failed to find TMDB ID for normalized title "${parsed.normalized_title}":`, error);
+        }
+      }
+
+      // Step 3c: Try Brave Search for TMDB ID
+      if (!tmdbId && cleanTitle && braveApiKey) {
+        try {
+          const braveTmdbId = await braveClient.searchForTmdbId(cleanTitle, year || undefined);
+          if (braveTmdbId) {
+            tmdbId = braveTmdbId;
+            if (!imdbId && tmdbApiKey) {
+              try {
+                const tmdbMovie = await tmdbClient.getMovie(tmdbId);
+                if (tmdbMovie && tmdbMovie.imdb_id) {
+                  imdbId = tmdbMovie.imdb_id;
+                  console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie ${tmdbId}`);
+                }
+              } catch (error) {
+                // Ignore
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`    ✗ Failed to find TMDB ID via Brave for "${cleanTitle}":`, error);
+        }
+      }
+    }
+
+    // Update the database with found IDs
+    if (tmdbId !== item.tmdb_id || imdbId !== item.imdb_id) {
+      db.prepare(`
+        UPDATE rss_feed_items 
+        SET tmdb_id = ?, imdb_id = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(tmdbId, imdbId, itemId);
+      
+      console.log(`  ✓ Updated RSS item ${itemId}: TMDB=${tmdbId || 'null'}, IMDB=${imdbId || 'null'}`);
+    } else {
+      console.log(`  ℹ No changes needed for RSS item ${itemId}`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Match completed',
+      tmdbId,
+      imdbId,
+    });
+  } catch (error: any) {
+    console.error('Match RSS item error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to match RSS item: ' + (error?.message || 'Unknown error') 
+    });
   }
 });
 

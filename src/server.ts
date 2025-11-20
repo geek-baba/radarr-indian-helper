@@ -9,6 +9,7 @@ import { settingsModel } from './models/settings';
 import { syncRadarrMovies } from './services/radarrSync';
 import { syncRssFeeds } from './services/rssSync';
 import { runMatchingEngine } from './services/matchingEngine';
+import './services/logStorage'; // Initialize log storage
 
 const app = express();
 
