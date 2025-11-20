@@ -11,10 +11,19 @@ router.get('/', async (req: Request, res: Response) => {
     const feeds = feedsModel.getAll();
     const qualitySettings = settingsModel.getQualitySettings();
     const allSettings = settingsModel.getAll();
+    
+    console.log('=== Loading Settings Page ===');
+    console.log('Total settings:', allSettings.length);
+    console.log('Settings keys:', allSettings.map(s => s.key).join(', '));
+    
     const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value || '';
     const omdbApiKey = allSettings.find(s => s.key === 'omdb_api_key')?.value || '';
     const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value || '';
     const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key')?.value || '';
+    
+    console.log('Radarr URL found:', radarrApiUrl ? 'Yes' : 'No');
+    console.log('Radarr Key found:', radarrApiKey ? 'Yes' : 'No');
+    console.log('Database path:', process.env.DB_PATH || './data/app.db');
 
     res.render('settings', {
       feeds,
@@ -191,7 +200,9 @@ router.post('/radarr-config', async (req: Request, res: Response) => {
   try {
     const { apiUrl, apiKey } = req.body;
     
-    console.log('Saving Radarr config - URL:', apiUrl ? 'Provided' : 'Missing', 'Key:', apiKey ? 'Provided' : 'Missing');
+    console.log('=== Saving Radarr Config ===');
+    console.log('Received URL:', apiUrl ? `${apiUrl.substring(0, 20)}...` : 'Missing');
+    console.log('Received Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'Missing');
     
     if (!apiUrl || !apiKey) {
       console.error('Radarr config validation failed: Missing URL or Key');
@@ -210,30 +221,60 @@ router.post('/radarr-config', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Invalid Radarr API URL format' });
     }
 
-    console.log('Saving Radarr config to database...');
+    console.log('Saving to database...');
+    console.log('Database path:', process.env.DB_PATH || './data/app.db');
+    
+    // Save to database
     settingsModel.set('radarr_api_url', trimmedUrl);
     settingsModel.set('radarr_api_key', trimmedKey);
-    console.log('Radarr config saved to database successfully');
-
-    // Verify it was saved
+    
+    console.log('Settings saved. Verifying...');
+    
+    // Immediately verify it was saved
     const allSettings = settingsModel.getAll();
+    console.log('Total settings in database:', allSettings.length);
+    console.log('All settings keys:', allSettings.map(s => s.key).join(', '));
+    
     const savedUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value;
     const savedKey = allSettings.find(s => s.key === 'radarr_api_key')?.value;
     
-    if (savedUrl !== trimmedUrl || savedKey !== trimmedKey) {
-      console.error('Radarr config verification failed: Values do not match');
-      return res.status(500).json({ success: false, error: 'Configuration was not saved correctly. Please try again.' });
+    console.log('Saved URL:', savedUrl ? `${savedUrl.substring(0, 20)}...` : 'NOT FOUND');
+    console.log('Saved Key:', savedKey ? `${savedKey.substring(0, 10)}...` : 'NOT FOUND');
+    
+    if (!savedUrl || !savedKey) {
+      console.error('ERROR: Settings were not found in database after saving!');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Configuration was not saved correctly. Database may not be persisting. Check Docker volume mount.' 
+      });
     }
+    
+    if (savedUrl !== trimmedUrl || savedKey !== trimmedKey) {
+      console.error('ERROR: Saved values do not match input values!');
+      console.error('Expected URL:', trimmedUrl);
+      console.error('Got URL:', savedUrl);
+      return res.status(500).json({ success: false, error: 'Configuration values do not match. Please try again.' });
+    }
+
+    console.log('✓ Settings verified in database');
 
     // Update Radarr client configuration
     console.log('Updating Radarr client configuration...');
     const radarrClient = (await import('../radarr/client')).default;
     radarrClient.updateConfig();
-    console.log('Radarr client configuration updated');
-
+    
+    // Verify client can read the settings
+    const clientSettings = settingsModel.getAll();
+    const clientUrl = clientSettings.find(s => s.key === 'radarr_api_url')?.value;
+    const clientKey = clientSettings.find(s => s.key === 'radarr_api_key')?.value;
+    console.log('Client can read URL:', clientUrl ? 'Yes' : 'No');
+    console.log('Client can read Key:', clientKey ? 'Yes' : 'No');
+    
+    console.log('=== Radarr Config Save Complete ===');
     res.json({ success: true, message: 'Radarr configuration saved successfully' });
   } catch (error: any) {
     console.error('Save Radarr config error:', error);
+    console.error('Error stack:', error?.stack);
     res.status(500).json({ success: false, error: 'Failed to save Radarr configuration: ' + (error?.message || 'Unknown error') });
   }
 });
@@ -245,6 +286,35 @@ router.post('/maintenance/backfill-radarr', async (_req: Request, res: Response)
   } catch (error) {
     console.error('Backfill Radarr links error:', error);
     res.status(500).json({ error: 'Failed to backfill Radarr links' });
+  }
+});
+
+// Debug endpoint to check database values
+router.get('/debug/radarr-config', (req: Request, res: Response) => {
+  try {
+    const allSettings = settingsModel.getAll();
+    const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url');
+    const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key');
+    
+    res.json({
+      success: true,
+      database: {
+        radarr_api_url: radarrApiUrl ? {
+          exists: true,
+          value: radarrApiUrl.value ? `${radarrApiUrl.value.substring(0, 30)}...` : 'empty',
+          length: radarrApiUrl.value?.length || 0
+        } : { exists: false },
+        radarr_api_key: radarrApiKey ? {
+          exists: true,
+          value: radarrApiKey.value ? `${radarrApiKey.value.substring(0, 10)}...` : 'empty',
+          length: radarrApiKey.value?.length || 0
+        } : { exists: false }
+      },
+      allSettingsKeys: allSettings.map(s => s.key),
+      totalSettings: allSettings.length
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
