@@ -156,8 +156,9 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
 router.get('/refresh/stats', (req: Request, res: Response) => {
   try {
-    const stats = getRefreshStats();
-    res.json({ success: true, stats });
+    // Refresh stats are no longer used with the new sync architecture
+    // Return empty stats for backward compatibility
+    res.json({ success: true, stats: { isRunning: false, currentFeed: null, feedsProcessed: 0, totalFeeds: 0 } });
   } catch (error) {
     console.error('Get refresh stats error:', error);
     res.status(500).json({ error: 'Failed to get refresh stats' });
