@@ -2,9 +2,7 @@ import { Router, Request, Response } from 'express';
 import { feedsModel } from '../models/feeds';
 import { settingsModel } from '../models/settings';
 import { QualitySettings } from '../types/QualitySettings';
-import { fetchAndProcessFeeds } from '../rss/fetchFeeds';
 import { backfillRadarrLinks } from '../tasks/backfillRadarr';
-import { getRefreshStats } from './refreshStats';
 
 const router = Router();
 
