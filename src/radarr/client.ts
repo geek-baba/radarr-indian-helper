@@ -11,10 +11,12 @@ class RadarrClient {
   }
 
   private initializeClient() {
-    // Try to get from settings first, fall back to environment variables
+    // ONLY get from settings - do NOT fall back to environment variables
     const allSettings = settingsModel.getAll();
-    const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value || config.radarr.apiUrl;
-    const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key')?.value || config.radarr.apiKey;
+    const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value;
+    const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key')?.value;
+
+    console.log('Radarr client initialization - URL:', radarrApiUrl ? 'Set' : 'Not set', 'Key:', radarrApiKey ? 'Set' : 'Not set');
 
     if (radarrApiUrl && radarrApiKey) {
       this.client = axios.create({
@@ -24,9 +26,11 @@ class RadarrClient {
         },
         timeout: 30000, // 30 second timeout
       });
+      console.log('Radarr client initialized with URL:', radarrApiUrl);
     } else {
       // Don't create a dummy client - let ensureClient throw an error
       this.client = null;
+      console.log('Radarr client NOT initialized - missing URL or Key');
     }
   }
 
