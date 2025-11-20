@@ -104,17 +104,19 @@ docker run -p 8085:8085 -v /path/to/data:/app/data radarr-indian-helper
 
 **Note**: Radarr API configuration is done via the Settings page after starting the container, not via environment variables.
 
-Docker Quick Start:
+### Docker Quick Start
 
+```bash
 docker pull ghcr.io/geek-baba/radarr-indian-helper:latest
 
 docker run -d \
   --name radarr-indian-helper \
   -p 8085:8085 \
-  -e RADARR_API_URL=http://radarr:7878/api/v3 \
-  -e RADARR_API_KEY=YOUR_KEY \
-  -v $(pwd)/data:/app/data \
+  -v /path/to/data:/app/data \
   ghcr.io/geek-baba/radarr-indian-helper:latest
+```
+
+After starting the container, navigate to `http://localhost:8085/settings` to configure your Radarr API URL and API key.
 
 ## Project Structure
 
