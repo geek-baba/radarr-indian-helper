@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { releasesModel } from '../models/releases';
 import radarrClient from '../radarr/client';
 import { Release } from '../types/Release';
+import tmdbClient from '../tmdb/client';
+import { parseReleaseFromTitle } from '../scoring/parseFromTitle';
 
 const router = Router();
 
@@ -190,10 +192,6 @@ router.post('/:id/override-tmdb', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Valid TMDB ID is required' });
     }
 
-    // Import tmdbClient
-    const tmdbClient = (await import('../tmdb/client')).default;
-    const { parseReleaseFromTitle } = await import('../scoring/parseFromTitle');
-    
     // Verify the TMDB ID by fetching movie details
     const tmdbMovie = await tmdbClient.getMovie(parseInt(tmdbId, 10));
     if (!tmdbMovie) {
