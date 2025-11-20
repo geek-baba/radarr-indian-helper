@@ -457,26 +457,6 @@
 
     async function saveTmdbApiKey(event) {
       event.preventDefault();
-      const apiKey = document.getElementById('tmdbApiKey').value;
-      try {
-        const res = await fetch('/settings/tmdb-api-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          showToast('TMDB API key saved successfully!', 'success');
-        } else {
-          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
-        }
-      } catch (error) {
-        showToast('Error: ' + error.message, 'error');
-      }
-    }
-
-    async function saveTmdbApiKey(event) {
-      event.preventDefault();
       const apiKey = document.getElementById('tmdbApiKey').value.trim();
       const button = event.target.querySelector('button[type="submit"]');
       const originalText = button.textContent;
