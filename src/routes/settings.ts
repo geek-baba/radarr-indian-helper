@@ -176,36 +176,159 @@ router.get('/refresh/stats', (req: Request, res: Response) => {
   }
 });
 
-router.post('/tmdb-api-key', (req: Request, res: Response) => {
+router.post('/tmdb-api-key', async (req: Request, res: Response) => {
   try {
     const { apiKey } = req.body;
-    settingsModel.set('tmdb_api_key', apiKey || '');
-    res.json({ success: true });
-  } catch (error) {
+    
+    console.log('=== Saving TMDB API Key ===');
+    console.log('Received API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'Missing');
+    console.log('Database path:', process.env.DB_PATH || './data/app.db');
+    
+    // Trim whitespace
+    const trimmedKey = (apiKey || '').trim();
+    
+    console.log('Saving to database...');
+    settingsModel.set('tmdb_api_key', trimmedKey);
+    
+    console.log('Settings saved. Verifying...');
+    
+    // Immediately verify it was saved
+    const allSettings = settingsModel.getAll();
+    console.log('Total settings in database:', allSettings.length);
+    
+    const savedKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value;
+    
+    console.log('Saved Key:', savedKey ? `${savedKey.substring(0, 10)}...` : 'NOT FOUND');
+    
+    if (savedKey !== trimmedKey) {
+      console.error('ERROR: Saved value does not match input value!');
+      console.error('Expected:', trimmedKey);
+      console.error('Got:', savedKey);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'API key was not saved correctly. Please check Docker volume mount.' 
+      });
+    }
+
+    console.log('✓ TMDB API key verified in database');
+    
+    // Update TMDB client configuration
+    console.log('Updating TMDB client configuration...');
+    const tmdbClient = (await import('../tmdb/client')).default;
+    tmdbClient.setApiKey(trimmedKey);
+    console.log('✓ TMDB client configuration updated');
+
+    res.json({ success: true, message: 'TMDB API key saved successfully' });
+  } catch (error: any) {
     console.error('Save TMDB API key error:', error);
-    res.status(500).json({ error: 'Failed to save TMDB API key' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to save TMDB API key: ' + (error?.message || 'Unknown error') 
+    });
   }
 });
 
-router.post('/omdb-api-key', (req: Request, res: Response) => {
+router.post('/omdb-api-key', async (req: Request, res: Response) => {
   try {
     const { apiKey } = req.body;
-    settingsModel.set('omdb_api_key', apiKey || '');
-    res.json({ success: true });
-  } catch (error) {
+    
+    console.log('=== Saving OMDB API Key ===');
+    console.log('Received API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'Missing');
+    console.log('Database path:', process.env.DB_PATH || './data/app.db');
+    
+    // Trim whitespace
+    const trimmedKey = (apiKey || '').trim();
+    
+    console.log('Saving to database...');
+    settingsModel.set('omdb_api_key', trimmedKey);
+    
+    console.log('Settings saved. Verifying...');
+    
+    // Immediately verify it was saved
+    const allSettings = settingsModel.getAll();
+    console.log('Total settings in database:', allSettings.length);
+    
+    const savedKey = allSettings.find(s => s.key === 'omdb_api_key')?.value;
+    
+    console.log('Saved Key:', savedKey ? `${savedKey.substring(0, 10)}...` : 'NOT FOUND');
+    
+    if (savedKey !== trimmedKey) {
+      console.error('ERROR: Saved value does not match input value!');
+      console.error('Expected:', trimmedKey);
+      console.error('Got:', savedKey);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'API key was not saved correctly. Please check Docker volume mount.' 
+      });
+    }
+
+    console.log('✓ OMDB API key verified in database');
+    
+    // Update IMDB client configuration
+    console.log('Updating IMDB client configuration...');
+    const imdbClient = (await import('../imdb/client')).default;
+    imdbClient.setApiKey(trimmedKey);
+    console.log('✓ IMDB client configuration updated');
+
+    res.json({ success: true, message: 'OMDB API key saved successfully' });
+  } catch (error: any) {
     console.error('Save OMDB API key error:', error);
-    res.status(500).json({ error: 'Failed to save OMDB API key' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to save OMDB API key: ' + (error?.message || 'Unknown error') 
+    });
   }
 });
 
-router.post('/brave-api-key', (req: Request, res: Response) => {
+router.post('/brave-api-key', async (req: Request, res: Response) => {
   try {
     const { apiKey } = req.body;
-    settingsModel.set('brave_api_key', apiKey || '');
-    res.json({ success: true });
-  } catch (error) {
+    
+    console.log('=== Saving Brave API Key ===');
+    console.log('Received API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'Missing');
+    console.log('Database path:', process.env.DB_PATH || './data/app.db');
+    
+    // Trim whitespace
+    const trimmedKey = (apiKey || '').trim();
+    
+    console.log('Saving to database...');
+    settingsModel.set('brave_api_key', trimmedKey);
+    
+    console.log('Settings saved. Verifying...');
+    
+    // Immediately verify it was saved
+    const allSettings = settingsModel.getAll();
+    console.log('Total settings in database:', allSettings.length);
+    
+    const savedKey = allSettings.find(s => s.key === 'brave_api_key')?.value;
+    
+    console.log('Saved Key:', savedKey ? `${savedKey.substring(0, 10)}...` : 'NOT FOUND');
+    
+    if (savedKey !== trimmedKey) {
+      console.error('ERROR: Saved value does not match input value!');
+      console.error('Expected:', trimmedKey);
+      console.error('Got:', savedKey);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'API key was not saved correctly. Please check Docker volume mount.' 
+      });
+    }
+
+    console.log('✓ Brave API key verified in database');
+    
+    // Update Brave client configuration
+    console.log('Updating Brave client configuration...');
+    const braveClient = (await import('../brave/client')).default;
+    braveClient.setApiKey(trimmedKey);
+    console.log('✓ Brave client configuration updated');
+
+    res.json({ success: true, message: 'Brave Search API key saved successfully' });
+  } catch (error: any) {
     console.error('Save Brave API key error:', error);
-    res.status(500).json({ error: 'Failed to save Brave API key' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to save Brave API key: ' + (error?.message || 'Unknown error') 
+    });
   }
 });
 

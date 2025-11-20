@@ -475,9 +475,45 @@
       }
     }
 
+    async function saveTmdbApiKey(event) {
+      event.preventDefault();
+      const apiKey = document.getElementById('tmdbApiKey').value.trim();
+      const button = event.target.querySelector('button[type="submit"]');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Saving...';
+      
+      try {
+        const res = await fetch('/settings/tmdb-api-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || 'TMDB API key saved successfully!', 'success');
+          // Reload page after 1 second to show updated value
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
     async function saveOmdbApiKey(event) {
       event.preventDefault();
-      const apiKey = document.getElementById('omdbApiKey').value;
+      const apiKey = document.getElementById('omdbApiKey').value.trim();
+      const button = event.target.querySelector('button[type="submit"]');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Saving...';
+      
       try {
         const res = await fetch('/settings/omdb-api-key', {
           method: 'POST',
@@ -486,18 +522,29 @@
         });
         const data = await res.json();
         if (data.success) {
-          showToast('OMDB API key saved successfully!', 'success');
+          showToast(data.message || 'OMDB API key saved successfully!', 'success');
+          // Reload page after 1 second to show updated value
+          setTimeout(() => window.location.reload(), 1000);
         } else {
           showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          button.disabled = false;
+          button.textContent = originalText;
         }
       } catch (error) {
         showToast('Error: ' + error.message, 'error');
+        button.disabled = false;
+        button.textContent = originalText;
       }
     }
 
     async function saveBraveApiKey(event) {
       event.preventDefault();
-      const apiKey = document.getElementById('braveApiKey').value;
+      const apiKey = document.getElementById('braveApiKey').value.trim();
+      const button = event.target.querySelector('button[type="submit"]');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Saving...';
+      
       try {
         const res = await fetch('/settings/brave-api-key', {
           method: 'POST',
@@ -506,12 +553,18 @@
         });
         const data = await res.json();
         if (data.success) {
-          showToast('Brave Search API key saved successfully!', 'success');
+          showToast(data.message || 'Brave Search API key saved successfully!', 'success');
+          // Reload page after 1 second to show updated value
+          setTimeout(() => window.location.reload(), 1000);
         } else {
           showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          button.disabled = false;
+          button.textContent = originalText;
         }
       } catch (error) {
         showToast('Error: ' + error.message, 'error');
+        button.disabled = false;
+        button.textContent = originalText;
       }
     }
 
