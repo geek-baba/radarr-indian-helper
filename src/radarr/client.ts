@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { settingsModel } from '../models/settings';
-import { RadarrMovie, RadarrLookupResult, RadarrMovieFile, RadarrHistory } from './types';
+import { RadarrMovie, RadarrLookupResult, RadarrMovieFile, RadarrHistory, RadarrQualityProfile, RadarrRootFolder } from './types';
 
 class RadarrClient {
   private client: AxiosInstance | null = null;
@@ -91,9 +91,9 @@ class RadarrClient {
     }
   }
 
-  async getQualityProfiles(): Promise<Array<{ id: number; name: string }>> {
+  async getQualityProfiles(): Promise<RadarrQualityProfile[]> {
     try {
-      const response = await this.client.get<Array<{ id: number; name: string }>>('/qualityProfile');
+      const response = await this.ensureClient().get<RadarrQualityProfile[]>('/qualityprofile');
       return response.data || [];
     } catch (error) {
       console.error('Radarr get quality profiles error:', error);
@@ -101,9 +101,9 @@ class RadarrClient {
     }
   }
 
-  async getRootFolders(): Promise<Array<{ id: number; path: string }>> {
+  async getRootFolders(): Promise<RadarrRootFolder[]> {
     try {
-      const response = await this.client.get<Array<{ id: number; path: string }>>('/rootFolder');
+      const response = await this.ensureClient().get<RadarrRootFolder[]>('/rootfolder');
       return response.data || [];
     } catch (error) {
       console.error('Radarr get root folders error:', error);
@@ -113,7 +113,7 @@ class RadarrClient {
 
   async lookupMovieByTmdbId(tmdbId: number): Promise<RadarrLookupResult | null> {
     try {
-      const response = await this.client.get<RadarrLookupResult>(`/movie/lookup/tmdb`, {
+      const response = await this.ensureClient().get<RadarrLookupResult>(`/movie/lookup/tmdb`, {
         params: { tmdbId },
       });
       return response.data || null;
