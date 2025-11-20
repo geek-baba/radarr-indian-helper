@@ -162,6 +162,27 @@
           </button>
         </form>
       </div>
+
+      <div class="bg-orange-50 border border-orange-200 rounded p-4">
+        <h4 class="font-semibold mb-2">Brave Search API Key</h4>
+        <p class="text-sm text-orange-800 mb-3">
+          Optional: Used as a fallback web search to resolve IMDb/TMDb IDs when TMDB and OMDb fail. 
+          Get your API key from <a href="https://api.search.brave.com/" target="_blank" class="underline">Brave Search API</a>.
+        </p>
+        <form onsubmit="saveBraveApiKey(event)" class="flex gap-2">
+          <input 
+            type="text" 
+            id="braveApiKey" 
+            name="braveApiKey" 
+            value="<%= braveApiKey %>" 
+            placeholder="Enter Brave Search API Key (optional)"
+            class="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+          <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
+            Save
+          </button>
+        </form>
+      </div>
     </div>
 
     <!-- Maintenance Section -->

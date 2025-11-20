@@ -18,6 +18,7 @@ router.get('/', async (req: Request, res: Response) => {
     
     const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value || '';
     const omdbApiKey = allSettings.find(s => s.key === 'omdb_api_key')?.value || '';
+    const braveApiKey = allSettings.find(s => s.key === 'brave_api_key')?.value || '';
     const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value || '';
     const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key')?.value || '';
     
@@ -30,6 +31,7 @@ router.get('/', async (req: Request, res: Response) => {
       qualitySettings,
       tmdbApiKey,
       omdbApiKey,
+      braveApiKey,
       radarrApiUrl,
       radarrApiKey,
     });
@@ -193,6 +195,17 @@ router.post('/omdb-api-key', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Save OMDB API key error:', error);
     res.status(500).json({ error: 'Failed to save OMDB API key' });
+  }
+});
+
+router.post('/brave-api-key', (req: Request, res: Response) => {
+  try {
+    const { apiKey } = req.body;
+    settingsModel.set('brave_api_key', apiKey || '');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Save Brave API key error:', error);
+    res.status(500).json({ error: 'Failed to save Brave API key' });
   }
 });
 

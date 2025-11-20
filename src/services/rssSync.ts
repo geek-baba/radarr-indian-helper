@@ -4,6 +4,7 @@ import { feedsModel } from '../models/feeds';
 import { parseRSSItem } from '../rss/parseRelease';
 import tmdbClient from '../tmdb/client';
 import imdbClient from '../imdb/client';
+import braveClient from '../brave/client';
 import { settingsModel } from '../models/settings';
 import { syncProgress } from './syncProgress';
 
@@ -38,16 +39,20 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
     syncProgress.start('rss', 0);
     syncProgress.update('Initializing...', 0);
     
-    // Get API keys for TMDB/OMDB lookups
+    // Get API keys for TMDB/OMDB/Brave lookups
     const allSettings = settingsModel.getAll();
     const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value;
     const omdbApiKey = allSettings.find(s => s.key === 'omdb_api_key')?.value;
+    const braveApiKey = allSettings.find(s => s.key === 'brave_api_key')?.value;
     
     if (tmdbApiKey) {
       tmdbClient.setApiKey(tmdbApiKey);
     }
     if (omdbApiKey) {
       imdbClient.setApiKey(omdbApiKey);
+    }
+    if (braveApiKey) {
+      braveClient.setApiKey(braveApiKey);
     }
     
     const feeds = feedsModel.getEnabled();
@@ -233,6 +238,31 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                   }
                 } catch (error) {
                   console.log(`    ✗ Failed to find TMDB ID for "${parsed.normalized_title}":`, error);
+                }
+              }
+
+              // Step 3c: If still no TMDB ID, try Brave Search as final fallback
+              if (!tmdbId && cleanTitle && braveApiKey) {
+                try {
+                  const braveTmdbId = await braveClient.searchForTmdbId(cleanTitle, year || undefined);
+                  if (braveTmdbId) {
+                    tmdbId = braveTmdbId;
+                    
+                    // If TMDB movie has IMDB ID and we don't have it yet, try to get it
+                    if (!imdbId && tmdbApiKey) {
+                      try {
+                        const tmdbMovie = await tmdbClient.getMovie(tmdbId);
+                        if (tmdbMovie && tmdbMovie.imdb_id) {
+                          imdbId = tmdbMovie.imdb_id;
+                          console.log(`    ✓ Found IMDB ID ${imdbId} from TMDB movie ${tmdbId}`);
+                        }
+                      } catch (error) {
+                        // Ignore
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.log(`    ✗ Failed to find TMDB ID via Brave for "${cleanTitle}":`, error);
                 }
               }
             }
