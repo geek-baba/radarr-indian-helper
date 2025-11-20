@@ -215,7 +215,7 @@ router.post('/:id/override-tmdb', async (req: Request, res: Response) => {
 
       // Parse existing file attributes (same logic as fetchFeeds)
       if (existingFile) {
-        const existingParsed = parseReleaseFromTitle(existingFile.relativePath);
+        const existingParsed: any = parseReleaseFromTitle(existingFile.relativePath);
         
         // Also try to get info from mediaInfo if available
         if (existingFile.mediaInfo) {
