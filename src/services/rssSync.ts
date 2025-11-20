@@ -80,7 +80,17 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
 
         // Process items and enrich with TMDB/IMDB IDs
         const enrichedItems: Array<{ parsed: any; tmdbId: number | null; imdbId: string | null; originalItem: any; guid: string }> = [];
-        for (const item of feedData.items) {
+        for (let itemIndex = 0; itemIndex < feedData.items.length; itemIndex++) {
+          const item = feedData.items[itemIndex];
+          
+          // Update progress every 5 items or at the start
+          if (itemIndex === 0 || itemIndex % 5 === 0 || itemIndex === feedData.items.length - 1) {
+            syncProgress.update(
+              `Processing ${feed.name}: ${itemIndex + 1}/${feedData.items.length} items...`,
+              feedIndex,
+              feeds.length
+            );
+          }
           try {
             if (!item.title && !item.link) {
               continue; // Skip items without title or link
@@ -426,9 +436,16 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
     );
 
     console.log(`RSS sync completed: ${stats.feedsProcessed}/${stats.totalFeeds} feeds, ${stats.itemsSynced} new items, ${stats.itemsUpdated} updated items, ${stats.errors.length} errors`);
+    
+    // Mark sync as complete
+    syncProgress.update('Sync completed', stats.feedsProcessed, stats.totalFeeds, stats.errors.length);
+    syncProgress.complete();
+    
     return stats;
   } catch (error: any) {
     console.error('RSS sync error:', error);
+    syncProgress.update(`Error: ${error?.message || 'Unknown error'}`, 0, 0, 1);
+    syncProgress.complete();
     throw error;
   }
 }
