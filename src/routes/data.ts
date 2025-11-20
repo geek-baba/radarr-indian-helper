@@ -374,6 +374,52 @@ router.post('/rss/match/:id', async (req: Request, res: Response) => {
 
     console.log(`  Current state: TMDB=${tmdbId || 'missing'}, IMDB=${imdbId || 'missing'}, Title="${cleanTitle}", Year=${year || 'none'}`);
 
+    // Step 0: Validate existing TMDB/IMDB ID pair if both are present
+    if (tmdbId && imdbId && tmdbApiKey) {
+      try {
+        console.log(`    Validating TMDB ID ${tmdbId} and IMDB ID ${imdbId} match...`);
+        const tmdbMovie = await tmdbClient.getMovie(tmdbId);
+        const tmdbImdbId = tmdbMovie?.imdb_id;
+        
+        if (tmdbImdbId && tmdbImdbId !== imdbId) {
+          console.log(`    ⚠ MISMATCH DETECTED: TMDB ${tmdbId} has IMDB ${tmdbImdbId}, but we have IMDB ${imdbId}`);
+          console.log(`    TMDB movie: "${tmdbMovie?.title}" (${tmdbMovie?.release_date ? new Date(tmdbMovie.release_date).getFullYear() : 'unknown'})`);
+          
+          // Try to get TMDB ID from the IMDB ID we have
+          try {
+            const correctTmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+            if (correctTmdbMovie) {
+              const correctTmdbId = correctTmdbMovie.id;
+              const correctYear = correctTmdbMovie.release_date ? new Date(correctTmdbMovie.release_date).getFullYear() : null;
+              console.log(`    ✓ Found TMDB ID ${correctTmdbId} for IMDB ${imdbId}: "${correctTmdbMovie.title}" (${correctYear || 'unknown'})`);
+              
+              // Validate year match if we have a year
+              if (year && correctYear && correctYear === year) {
+                console.log(`    ✓ Year matches (${year}) - using correct TMDB ID ${correctTmdbId}`);
+                tmdbId = correctTmdbId;
+              } else if (!year || !correctYear) {
+                // If we don't have year info, trust the IMDB match
+                console.log(`    ⚠ No year validation possible - using TMDB ID ${correctTmdbId} from IMDB ${imdbId}`);
+                tmdbId = correctTmdbId;
+              } else {
+                console.log(`    ⚠ Year mismatch: expected ${year}, got ${correctYear} - keeping original TMDB ID ${tmdbId}`);
+              }
+            } else {
+              console.log(`    ⚠ Could not find TMDB ID for IMDB ${imdbId} - keeping original TMDB ID ${tmdbId}`);
+            }
+          } catch (error) {
+            console.log(`    ⚠ Failed to validate IMDB ${imdbId} - keeping original TMDB ID ${tmdbId}`);
+          }
+        } else if (tmdbImdbId === imdbId) {
+          console.log(`    ✓ TMDB ${tmdbId} and IMDB ${imdbId} match correctly`);
+        } else if (!tmdbImdbId) {
+          console.log(`    ⚠ TMDB ${tmdbId} has no IMDB ID - cannot validate match`);
+        }
+      } catch (error) {
+        console.log(`    ⚠ Failed to validate TMDB/IMDB pair:`, error);
+      }
+    }
+
     // Run enrichment logic (same as in rssSync.ts)
     const needsEnrichment = !tmdbId || !imdbId;
 
