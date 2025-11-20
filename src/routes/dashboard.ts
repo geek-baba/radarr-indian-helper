@@ -331,6 +331,27 @@ router.get('/', async (req: Request, res: Response) => {
         }
       }
       
+      // If we have TMDB ID but no poster, fetch directly from TMDB
+      if (movieGroup.tmdbId && !movieGroup.posterUrl && tmdbApiKey) {
+        try {
+          const tmdbMovie = await tmdbClient.getMovie(movieGroup.tmdbId);
+          if (tmdbMovie && tmdbMovie.poster_path) {
+            const posterUrl = tmdbClient.getPosterUrl(tmdbMovie.poster_path);
+            movieGroup.posterUrl = posterUrl ?? undefined;
+            console.log(`  Fetched poster from TMDB for movie ID ${movieGroup.tmdbId}`);
+          }
+          // Also update IMDB ID and language if missing
+          if (!movieGroup.imdbId && tmdbMovie?.imdb_id) {
+            movieGroup.imdbId = tmdbMovie.imdb_id;
+          }
+          if (!movieGroup.originalLanguage && tmdbMovie?.original_language) {
+            movieGroup.originalLanguage = tmdbMovie.original_language;
+          }
+        } catch (error) {
+          console.error(`Error fetching TMDB movie ${movieGroup.tmdbId} for poster:`, error);
+        }
+      }
+      
       // If we still don't have TMDB ID or poster, try TMDB API search
       if ((!movieGroup.tmdbId || !movieGroup.posterUrl) && tmdbApiKey) {
         try {

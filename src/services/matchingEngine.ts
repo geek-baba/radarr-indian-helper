@@ -86,6 +86,52 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
         let existingFileAttributes: string | undefined;
         let radarrHistory: string | undefined;
 
+        // Step 0: Validate existing TMDB/IMDB ID pair if both are present
+        if (tmdbId && imdbId && tmdbApiKey) {
+          try {
+            console.log(`  Validating TMDB ID ${tmdbId} and IMDB ID ${imdbId} match...`);
+            const tmdbMovie = await tmdbClient.getMovie(tmdbId);
+            const tmdbImdbId = tmdbMovie?.imdb_id;
+            
+            if (tmdbImdbId && tmdbImdbId !== imdbId) {
+              console.log(`  ⚠ MISMATCH DETECTED: TMDB ${tmdbId} has IMDB ${tmdbImdbId}, but we have IMDB ${imdbId}`);
+              console.log(`  TMDB movie: "${tmdbMovie?.title}" (${tmdbMovie?.release_date ? new Date(tmdbMovie.release_date).getFullYear() : 'unknown'})`);
+              
+              // Try to get TMDB ID from the IMDB ID we have
+              try {
+                const correctTmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+                if (correctTmdbMovie) {
+                  const correctTmdbId = correctTmdbMovie.id;
+                  const correctYear = correctTmdbMovie.release_date ? new Date(correctTmdbMovie.release_date).getFullYear() : null;
+                  console.log(`  ✓ Found TMDB ID ${correctTmdbId} for IMDB ${imdbId}: "${correctTmdbMovie.title}" (${correctYear || 'unknown'})`);
+                  
+                  // Validate year match if we have a year
+                  if (item.year && correctYear && correctYear === item.year) {
+                    console.log(`  ✓ Year matches (${item.year}) - using correct TMDB ID ${correctTmdbId}`);
+                    tmdbId = correctTmdbId;
+                  } else if (!item.year || !correctYear) {
+                    // If we don't have year info, trust the IMDB match
+                    console.log(`  ⚠ No year validation possible - using TMDB ID ${correctTmdbId} from IMDB ${imdbId}`);
+                    tmdbId = correctTmdbId;
+                  } else {
+                    console.log(`  ⚠ Year mismatch: expected ${item.year}, got ${correctYear} - keeping original TMDB ID ${tmdbId}`);
+                  }
+                } else {
+                  console.log(`  ⚠ Could not find TMDB ID for IMDB ${imdbId} - keeping original TMDB ID ${tmdbId}`);
+                }
+              } catch (error) {
+                console.log(`  ⚠ Failed to validate IMDB ${imdbId} - keeping original TMDB ID ${tmdbId}`);
+              }
+            } else if (tmdbImdbId === imdbId) {
+              console.log(`  ✓ TMDB ${tmdbId} and IMDB ${imdbId} match correctly`);
+            } else if (!tmdbImdbId) {
+              console.log(`  ⚠ TMDB ${tmdbId} has no IMDB ID - cannot validate match`);
+            }
+          } catch (error) {
+            console.log(`  ⚠ Failed to validate TMDB/IMDB pair:`, error);
+          }
+        }
+
         // Step 1: TMDB ID is PRIMARY - if we have TMDB ID, extract IMDB ID from TMDB
         if (tmdbId && tmdbApiKey && !imdbId) {
           try {
