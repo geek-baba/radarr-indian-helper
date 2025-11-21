@@ -7,6 +7,7 @@ export interface RadarrMovie {
   path?: string;
   hasFile?: boolean;
   movieFile?: RadarrMovieFile;
+  dateAdded?: string; // ISO date string when movie was added to Radarr
   originalLanguage?: {
     id: number;
     name: string;

@@ -87,11 +87,15 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
             movie_file: movie.movieFile ? JSON.stringify(movie.movieFile) : null,
             original_language: movie.originalLanguage?.name || null,
             images: movie.images ? JSON.stringify(movie.images) : null,
+            date_added: movie.dateAdded || null,
             synced_at: new Date().toISOString(),
           };
 
           if (existing) {
-            // Update existing
+            // Update existing (preserve date_added if not provided)
+            const existingMovie = db.prepare('SELECT date_added FROM radarr_movies WHERE radarr_id = ?').get(movie.id) as { date_added: string | null } | undefined;
+            const dateAdded = movieData.date_added || existingMovie?.date_added || null;
+            
             db.prepare(`
               UPDATE radarr_movies SET
                 tmdb_id = ?,
@@ -103,6 +107,7 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
                 movie_file = ?,
                 original_language = ?,
                 images = ?,
+                date_added = ?,
                 synced_at = ?
               WHERE radarr_id = ?
             `).run(
@@ -115,6 +120,7 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
               movieData.movie_file,
               movieData.original_language,
               movieData.images,
+              dateAdded,
               movieData.synced_at,
               movie.id
             );
@@ -124,8 +130,8 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
             db.prepare(`
               INSERT INTO radarr_movies (
                 radarr_id, tmdb_id, imdb_id, title, year, path, has_file,
-                movie_file, original_language, images, synced_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                movie_file, original_language, images, date_added, synced_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
               movieData.radarr_id,
               movieData.tmdb_id,
@@ -176,8 +182,30 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
 /**
  * Get all synced Radarr movies
  */
-export function getSyncedRadarrMovies(): any[] {
-  return db.prepare('SELECT * FROM radarr_movies ORDER BY title').all();
+export function getSyncedRadarrMovies(page: number = 1, limit: number = 50, search?: string): { movies: any[]; total: number } {
+  const offset = (page - 1) * limit;
+  let query = 'SELECT * FROM radarr_movies';
+  let countQuery = 'SELECT COUNT(*) as count FROM radarr_movies';
+  const params: any[] = [];
+  
+  if (search && search.trim()) {
+    const searchTerm = `%${search.trim()}%`;
+    query += ' WHERE title LIKE ? OR tmdb_id LIKE ? OR imdb_id LIKE ? OR year LIKE ?';
+    countQuery += ' WHERE title LIKE ? OR tmdb_id LIKE ? OR imdb_id LIKE ? OR year LIKE ?';
+    params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+  }
+  
+  // Sort by date_added DESC (newest first), fallback to title if date_added is null
+  query += ' ORDER BY datetime(date_added) DESC, title ASC';
+  query += ` LIMIT ? OFFSET ?`;
+  
+  const movies = db.prepare(query).all(...params, limit, offset);
+  const totalResult = db.prepare(countQuery).get(...params) as { count: number };
+  
+  return {
+    movies,
+    total: totalResult.count,
+  };
 }
 
 /**

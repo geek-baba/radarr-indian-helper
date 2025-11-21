@@ -16,14 +16,27 @@ const router = Router();
 // Radarr Data page
 router.get('/radarr', (req: Request, res: Response) => {
   try {
-    const movies = getSyncedRadarrMovies();
+    const page = parseInt(req.query.page as string) || 1;
+    const search = req.query.search as string || '';
+    const { movies, total } = getSyncedRadarrMovies(page, 50, search);
     const lastSync = getLastRadarrSync();
+    
+    // Get total counts for stats (without pagination)
+    const allMovies = getSyncedRadarrMovies(1, 999999); // Get all for stats
+    const totalMovies = allMovies.total;
+    const moviesWithFiles = allMovies.movies.filter((m: any) => m.has_file).length;
+    
+    const totalPages = Math.ceil(total / 50);
     
     res.render('radarr-data', {
       movies,
       lastSync,
-      totalMovies: movies.length,
-      moviesWithFiles: movies.filter((m: any) => m.has_file).length,
+      totalMovies,
+      moviesWithFiles,
+      currentPage: page,
+      totalPages,
+      total,
+      search,
     });
   } catch (error) {
     console.error('Radarr data page error:', error);

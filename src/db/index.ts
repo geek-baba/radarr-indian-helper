@@ -78,6 +78,7 @@ db.exec(`
     movie_file TEXT,
     original_language TEXT,
     images TEXT,
+    date_added TEXT,
     synced_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -154,6 +155,15 @@ try {
   if (!columnNames.includes('imdb_id')) {
     db.exec('ALTER TABLE releases ADD COLUMN imdb_id TEXT');
     console.log('Added column: imdb_id');
+  }
+  
+  // Check radarr_movies table for date_added column
+  const radarrColumns = db.prepare("PRAGMA table_info(radarr_movies)").all() as any[];
+  const radarrColumnNames = radarrColumns.map((c: any) => c.name);
+  
+  if (!radarrColumnNames.includes('date_added')) {
+    db.exec('ALTER TABLE radarr_movies ADD COLUMN date_added TEXT');
+    console.log('Added column: radarr_movies.date_added');
   }
 } catch (error) {
   console.error('Migration error:', error);
