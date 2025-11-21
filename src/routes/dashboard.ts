@@ -643,6 +643,7 @@ router.get('/', async (req: Request, res: Response) => {
       unmatchedItems,
       ignoredItems,
       radarrBaseUrl,
+      lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
     });
   } catch (error) {
     console.error('Dashboard error:', error);
