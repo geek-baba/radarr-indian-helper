@@ -660,4 +660,3 @@ router.get('/refresh/progress', (req: Request, res: Response) => {
 
 export default router;
 
-// Build fix
