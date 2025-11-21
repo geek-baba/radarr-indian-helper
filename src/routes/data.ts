@@ -335,6 +335,75 @@ router.post('/rss/override-tmdb/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Override IMDB ID for RSS item
+router.post('/rss/override-imdb/:id', async (req: Request, res: Response) => {
+  try {
+    const itemId = parseInt(req.params.id, 10);
+    const { imdbId } = req.body;
+    
+    if (!imdbId || !imdbId.match(/^tt\d{7,}$/)) {
+      return res.status(400).json({ success: false, error: 'Valid IMDB ID is required (format: tt1234567)' });
+    }
+
+    // Get the RSS item from database
+    const item = db.prepare('SELECT * FROM rss_feed_items WHERE id = ?').get(itemId) as any;
+    
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'RSS item not found' });
+    }
+
+    // Get API keys
+    const allSettings = settingsModel.getAll();
+    const tmdbApiKey = allSettings.find(s => s.key === 'tmdb_api_key')?.value;
+    
+    let tmdbId = item.tmdb_id;
+    let tmdbTitle: string | undefined;
+
+    // Try to get TMDB ID from IMDB ID if we have TMDB API key
+    // Note: It's OK if TMDB doesn't exist for this IMDB ID - we'll just save the IMDB ID
+    if (tmdbApiKey && !tmdbId) {
+      tmdbClient.setApiKey(tmdbApiKey);
+      try {
+        const tmdbMovie = await tmdbClient.findMovieByImdbId(imdbId);
+        if (tmdbMovie) {
+          tmdbId = tmdbMovie.id;
+          tmdbTitle = tmdbMovie.title;
+          console.log(`Found TMDB ID ${tmdbId} for IMDB ${imdbId}: "${tmdbTitle}"`);
+        } else {
+          console.log(`TMDB entry does not exist for IMDB ${imdbId} - will save IMDB ID only`);
+        }
+      } catch (error: any) {
+        // It's OK if TMDB doesn't exist - we'll just save the IMDB ID
+        console.log(`Could not find TMDB ID for IMDB ${imdbId}: ${error?.message || 'Not found'}`);
+      }
+    }
+
+    // Update the RSS item with the new IMDB ID and TMDB ID (if found), mark as manually set
+    // Only mark tmdb_id_manual if we actually found a TMDB ID
+    db.prepare(`
+      UPDATE rss_feed_items 
+      SET imdb_id = ?, tmdb_id = ?, imdb_id_manual = 1, tmdb_id_manual = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(imdbId, tmdbId || null, tmdbId ? 1 : 0, itemId);
+
+    console.log(`Manually updated RSS item ${itemId} with IMDB ID ${imdbId}${tmdbId ? ` and TMDB ID ${tmdbId}` : ' (TMDB not found)'}`);
+
+    res.json({ 
+      success: true, 
+      message: `IMDB ID updated to ${imdbId}${tmdbTitle ? ` (${tmdbTitle})` : ''}${tmdbId ? ` - TMDB: ${tmdbId}` : ' - TMDB entry not found'}`,
+      imdbId: imdbId,
+      tmdbId: tmdbId || null,
+      tmdbTitle: tmdbTitle,
+    });
+  } catch (error: any) {
+    console.error('Override IMDB ID for RSS item error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to override IMDB ID: ' + (error?.message || 'Unknown error')
+    });
+  }
+});
+
 // Match single RSS item
 router.post('/rss/match/:id', async (req: Request, res: Response) => {
   try {

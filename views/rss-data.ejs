@@ -209,6 +209,66 @@
     </div>
   </main>
 
+  <!-- Override TMDB ID Modal -->
+  <div id="overrideTmdbModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-semibold mb-4">Override TMDB ID</h3>
+      <form id="overrideTmdbForm" onsubmit="submitOverrideTmdb(event)">
+        <input type="hidden" id="overrideTmdbItemId" name="itemId">
+        <div class="mb-4">
+          <label for="tmdbIdInput" class="block text-sm font-medium mb-2">TMDB ID:</label>
+          <input 
+            type="number" 
+            id="tmdbIdInput" 
+            name="tmdbId" 
+            required 
+            class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Enter TMDB ID"
+          >
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="hideOverrideTmdbModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+            Cancel
+          </button>
+          <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Override IMDB ID Modal -->
+  <div id="overrideImdbModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="text-xl font-semibold mb-4">Override IMDB ID</h3>
+      <form id="overrideImdbForm" onsubmit="submitOverrideImdb(event)">
+        <input type="hidden" id="overrideImdbItemId" name="itemId">
+        <div class="mb-4">
+          <label for="imdbIdInput" class="block text-sm font-medium mb-2">IMDB ID:</label>
+          <input 
+            type="text" 
+            id="imdbIdInput" 
+            name="imdbId" 
+            required 
+            class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter IMDB ID (e.g., tt1234567)"
+            pattern="^tt\d{7,}$"
+          >
+          <p class="text-xs text-gray-500 mt-1">Format: tt1234567</p>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="hideOverrideImdbModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+            Cancel
+          </button>
+          <button type="submit" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     let progressInterval = null;
 
@@ -249,16 +309,38 @@
       });
     }
 
-    async function overrideTmdbId(itemId) {
-      const tmdbId = prompt('Enter TMDB ID:');
-      if (!tmdbId) return;
-      
+    let currentOverrideItemId = null;
+
+    function overrideTmdbId(itemId) {
+      currentOverrideItemId = itemId;
+      document.getElementById('overrideTmdbItemId').value = itemId;
+      document.getElementById('tmdbIdInput').value = '';
+      document.getElementById('overrideTmdbModal').classList.remove('hidden');
+      document.getElementById('tmdbIdInput').focus();
+    }
+
+    function hideOverrideTmdbModal() {
+      document.getElementById('overrideTmdbModal').classList.add('hidden');
+      currentOverrideItemId = null;
+    }
+
+    async function submitOverrideTmdb(event) {
+      event.preventDefault();
+      const itemId = document.getElementById('overrideTmdbItemId').value;
+      const tmdbId = document.getElementById('tmdbIdInput').value;
+      const button = event.target.querySelector('button[type="submit"]');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Saving...';
+
       const id = parseInt(tmdbId, 10);
       if (isNaN(id)) {
         showToast('Invalid TMDB ID', 'error');
+        button.disabled = false;
+        button.textContent = originalText;
         return;
       }
-      
+
       try {
         const res = await fetch(`/data/rss/override-tmdb/${itemId}`, {
           method: 'POST',
@@ -268,24 +350,49 @@
         const data = await res.json();
         if (data.success) {
           showToast(`TMDB ID updated to ${data.tmdbId} (${data.tmdbTitle || 'Unknown'})${data.imdbId ? ` - IMDB: ${data.imdbId}` : ''} - This will persist`, 'success');
+          hideOverrideTmdbModal();
           setTimeout(() => window.location.reload(), 1000);
         } else {
           showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          button.disabled = false;
+          button.textContent = originalText;
         }
       } catch (error) {
         showToast('Error: ' + error.message, 'error');
+        button.disabled = false;
+        button.textContent = originalText;
       }
     }
 
-    async function overrideImdbId(itemId) {
-      const imdbId = prompt('Enter IMDB ID (format: tt1234567):');
-      if (!imdbId) return;
-      
+    function overrideImdbId(itemId) {
+      currentOverrideItemId = itemId;
+      document.getElementById('overrideImdbItemId').value = itemId;
+      document.getElementById('imdbIdInput').value = '';
+      document.getElementById('overrideImdbModal').classList.remove('hidden');
+      document.getElementById('imdbIdInput').focus();
+    }
+
+    function hideOverrideImdbModal() {
+      document.getElementById('overrideImdbModal').classList.add('hidden');
+      currentOverrideItemId = null;
+    }
+
+    async function submitOverrideImdb(event) {
+      event.preventDefault();
+      const itemId = document.getElementById('overrideImdbItemId').value;
+      const imdbId = document.getElementById('imdbIdInput').value.trim();
+      const button = event.target.querySelector('button[type="submit"]');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Saving...';
+
       if (!imdbId.match(/^tt\d{7,}$/)) {
         showToast('Invalid IMDB ID format. Must be like tt1234567', 'error');
+        button.disabled = false;
+        button.textContent = originalText;
         return;
       }
-      
+
       try {
         const res = await fetch(`/data/rss/override-imdb/${itemId}`, {
           method: 'POST',
@@ -294,13 +401,18 @@
         });
         const data = await res.json();
         if (data.success) {
-          showToast(`IMDB ID updated to ${data.imdbId}${data.tmdbTitle ? ` (${data.tmdbTitle})` : ''}${data.tmdbId ? ` - TMDB: ${data.tmdbId}` : ''} - This will persist`, 'success');
+          showToast(`IMDB ID updated to ${data.imdbId}${data.tmdbTitle ? ` (${data.tmdbTitle})` : ''}${data.tmdbId ? ` - TMDB: ${data.tmdbId}` : ' - TMDB not found'} - This will persist`, 'success');
+          hideOverrideImdbModal();
           setTimeout(() => window.location.reload(), 1000);
         } else {
           showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+          button.disabled = false;
+          button.textContent = originalText;
         }
       } catch (error) {
         showToast('Error: ' + error.message, 'error');
+        button.disabled = false;
+        button.textContent = originalText;
       }
     }
 
