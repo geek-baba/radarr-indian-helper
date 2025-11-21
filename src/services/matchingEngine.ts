@@ -410,7 +410,7 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
                 isDubbed: false,
                 preferredLanguage: false,
               });
-            } catch (error) {
+            } catch (error: any) {
               // Ignore
             }
           }
