@@ -196,7 +196,7 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
                     radarrHistory = JSON.stringify(downloadEvents);
                   }
                 }
-              } catch (error) {
+              } catch (error: any) {
                 console.log(`Could not fetch history for Radarr movie ${radarrMovieId}:`, error);
               }
             }
