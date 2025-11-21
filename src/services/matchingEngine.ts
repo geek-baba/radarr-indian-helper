@@ -60,6 +60,8 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
 
     for (const item of rssItems) {
       try {
+        console.log(`\nProcessing RSS item: "${item.title}" (TMDB: ${item.tmdb_id || 'none'}, IMDB: ${item.imdb_id || 'none'})`);
+        
         // Check if we've already processed this item (by guid)
         const existingRelease = releasesModel.getByGuid(item.guid);
         // Note: We still process items with ADDED/UPGRADED status to update metadata
@@ -130,6 +132,18 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
             } else if (!tmdbImdbId) {
               console.log(`  ⚠ TMDB ${tmdbId} has no IMDB ID - cannot validate match`);
             }
+            
+            // After validation/correction, check Radarr again with the (possibly corrected) TMDB ID
+            if (tmdbId) {
+              const syncedRadarrMovie = getSyncedRadarrMovieByTmdbId(tmdbId);
+              if (syncedRadarrMovie) {
+                radarrMovieId = syncedRadarrMovie.radarr_id;
+                radarrMovieTitle = syncedRadarrMovie.title;
+                console.log(`  ✓ Found Radarr movie match after IMDB validation: TMDB ID ${tmdbId} -> Radarr ID ${radarrMovieId} (${radarrMovieTitle})`);
+              } else {
+                console.log(`  ✗ No Radarr movie found for TMDB ID ${tmdbId} after IMDB validation (${item.title})`);
+              }
+            }
           } catch (error: any) {
             console.log(`  ⚠ Failed to validate TMDB/IMDB pair:`, error);
           }
@@ -158,6 +172,16 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
               tmdbId = tmdbMovie.id;
               tmdbTitle = tmdbMovie.title;
               tmdbOriginalLanguage = tmdbMovie.original_language;
+              
+              // Check synced Radarr with new TMDB ID
+              const syncedRadarrMovie = getSyncedRadarrMovieByTmdbId(tmdbId);
+              if (syncedRadarrMovie) {
+                radarrMovieId = syncedRadarrMovie.radarr_id;
+                radarrMovieTitle = syncedRadarrMovie.title;
+                console.log(`  ✓ Found Radarr movie match after IMDB->TMDB lookup (Step 1b): TMDB ID ${tmdbId} -> Radarr ID ${radarrMovieId} (${radarrMovieTitle})`);
+              } else {
+                console.log(`  ✗ No Radarr movie found for TMDB ID ${tmdbId} after IMDB->TMDB lookup (Step 1b) (${item.title})`);
+              }
             } else {
               needsAttention = true; // Have IMDB but no TMDB - won't work with Radarr
             }
