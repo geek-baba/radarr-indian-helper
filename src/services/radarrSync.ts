@@ -189,6 +189,12 @@ export function getSyncedRadarrMovieByTmdbId(tmdbId: number): any | null {
     // Debug: Check how many movies are in the table and what TMDB IDs exist
     const totalCount = db.prepare('SELECT COUNT(*) as count FROM radarr_movies').get() as { count: number };
     console.log(`  [DEBUG] No Radarr movie found for TMDB ID ${tmdbId}. Total movies in radarr_movies table: ${totalCount.count}`);
+    
+    // Show some sample TMDB IDs from the database for debugging
+    const sampleMovies = db.prepare('SELECT tmdb_id, title FROM radarr_movies LIMIT 10').all() as Array<{ tmdb_id: number; title: string }>;
+    if (sampleMovies.length > 0) {
+      console.log(`  [DEBUG] Sample TMDB IDs in database: ${sampleMovies.map(m => `${m.tmdb_id} (${m.title})`).join(', ')}`);
+    }
   }
   return result || null;
 }
