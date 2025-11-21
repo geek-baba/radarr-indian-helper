@@ -65,6 +65,7 @@
           placeholder="Search by title, year, TMDB ID, or IMDB ID..." 
           class="flex-1 border rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value="<%= search || '' %>"
+          onkeyup="handleSearchInput(event)"
         />
         <% if (search) { %>
           <button 
@@ -75,13 +76,6 @@
             Clear
           </button>
         <% } %>
-        <button 
-          type="button"
-          onclick="performSearch()" 
-          class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
-        >
-          Search
-        </button>
       </div>
     </div>
 
@@ -214,7 +208,26 @@
     let searchTimeout = null;
     let backgroundPollInterval = null;
 
-    // Search functionality
+    // Search functionality with debouncing
+    function handleSearchInput(event) {
+      // Clear existing timeout
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      // If Enter is pressed, search immediately
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        performSearch();
+        return;
+      }
+      
+      // Otherwise, debounce the search (wait 500ms after user stops typing)
+      searchTimeout = setTimeout(() => {
+        performSearch();
+      }, 500);
+    }
+
     function performSearch() {
       const searchInput = document.getElementById('searchInput');
       const searchTerm = searchInput.value.trim();
@@ -232,24 +245,16 @@
     }
 
     function clearSearch() {
+      // Clear the timeout if it exists
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
       const url = new URL(window.location.href);
       url.searchParams.delete('search');
       url.searchParams.set('page', '1');
       window.location.href = url.toString();
     }
-
-    // Handle Enter key in search input
-    document.addEventListener('DOMContentLoaded', function() {
-      const searchInput = document.getElementById('searchInput');
-      if (searchInput) {
-        searchInput.addEventListener('keydown', function(event) {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            performSearch();
-          }
-        });
-      }
-    });
 
     async function startSync() {
       const button = document.getElementById('syncButton');
