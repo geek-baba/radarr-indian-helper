@@ -567,28 +567,23 @@ router.get('/', async (req: Request, res: Response) => {
       group.ignored.length > 0
     );
 
-    // Separate into New Movies, Existing Movies, Unmatched Items, and Ignored Items
+    // Separate into New Movies, Existing Movies, and Unmatched Items
     const newMovies: typeof movieGroups = [];
     const existingMovies: typeof movieGroups = [];
     const unmatchedItems: typeof movieGroups = [];
-    const ignoredItems: typeof movieGroups = [];
 
     for (const group of filteredMovieGroups) {
       // Check if this is an unmatched item (no TMDB ID and no Radarr ID)
       if (!group.tmdbId && !group.radarrMovieId) {
-        // Unmatched items: if they have ignored releases, show in "Ignored Items", otherwise "Unmatched Items"
-        if (group.ignored.length > 0 && group.add.length === 0 && group.existing.length === 0 && group.upgrade.length === 0) {
-          ignoredItems.push(group);
-        } else {
-          unmatchedItems.push(group);
-        }
+        // All unmatched items go to "Unmatched Items" (including ignored ones)
+        unmatchedItems.push(group);
+      } else if (group.radarrMovieId || group.existing.length > 0) {
+        // Movie is in Radarr or has existing releases - goes to "Existing Movies"
+        // (ignored releases are included but don't create separate entries)
+        existingMovies.push(group);
       } else if (group.add.length > 0 || group.upgrade.length > 0) {
         // Has new releases or upgrades - goes to "New Movies" (even if some releases are ignored)
         newMovies.push(group);
-      } else if (group.existing.length > 0 || group.radarrMovieId) {
-        // Has existing releases or is in Radarr - goes to "Existing Movies"
-        // (ignored releases are included but don't create separate entries)
-        existingMovies.push(group);
       } else if (group.ignored.length > 0 && group.tmdbId) {
         // Matched movie (has TMDB ID) but only ignored releases - still show in "New Movies"
         // This handles the case where a movie is matched but all releases are ignored (e.g., all 2160p)
@@ -650,7 +645,6 @@ router.get('/', async (req: Request, res: Response) => {
       newMoviesByPeriod,
       existingMoviesByPeriod,
       unmatchedItems,
-      ignoredItems,
       radarrBaseUrl,
       lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
     });
