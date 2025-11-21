@@ -11,10 +11,20 @@ function convertRelease(row: any): Release {
 export const releasesModel = {
   getAll: (status?: ReleaseStatus): Release[] => {
     let rows: any[];
+    // Only return releases that have a corresponding RSS item (to avoid orphaned releases)
     if (status) {
-      rows = db.prepare('SELECT * FROM releases WHERE status = ? ORDER BY published_at DESC').all(status) as any[];
+      rows = db.prepare(`
+        SELECT r.* FROM releases r
+        INNER JOIN rss_feed_items rss ON r.guid = rss.guid
+        WHERE r.status = ?
+        ORDER BY r.published_at DESC
+      `).all(status) as any[];
     } else {
-      rows = db.prepare('SELECT * FROM releases ORDER BY published_at DESC').all() as any[];
+      rows = db.prepare(`
+        SELECT r.* FROM releases r
+        INNER JOIN rss_feed_items rss ON r.guid = rss.guid
+        ORDER BY r.published_at DESC
+      `).all() as any[];
     }
     return rows.map(convertRelease);
   },
