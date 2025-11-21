@@ -371,10 +371,10 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
         const transaction = db.transaction(() => {
           for (const { parsed, tmdbId, imdbId, originalItem, guid } of enrichedItems) {
             try {
-              // Check if item already exists
+              // Check if item already exists (need to check manual flags)
               const existing = db
-                .prepare('SELECT id FROM rss_feed_items WHERE guid = ?')
-                .get(guid) as { id: number } | undefined;
+                .prepare('SELECT id, tmdb_id_manual, imdb_id_manual, tmdb_id, imdb_id FROM rss_feed_items WHERE guid = ?')
+                .get(guid) as { id: number; tmdb_id_manual: number | null; imdb_id_manual: number | null; tmdb_id: number | null; imdb_id: string | null } | undefined;
 
               const itemData = {
                 guid,
