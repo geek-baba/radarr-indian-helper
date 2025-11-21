@@ -67,9 +67,10 @@
         (existingMoviesByPeriod.older && existingMoviesByPeriod.older.length > 0)
       );
       const hasUnmatched = unmatchedItems && unmatchedItems.length > 0;
+      const hasIgnored = ignoredItems && ignoredItems.length > 0;
     %>
 
-    <% if (!hasNewMovies && !hasExistingMovies && !hasUnmatched) { %>
+    <% if (!hasNewMovies && !hasExistingMovies && !hasUnmatched && !hasIgnored) { %>
       <p class="text-gray-600">No releases found. Go to Settings to add RSS feeds and sync data.</p>
     <% } else { %>
       
@@ -80,7 +81,8 @@
             const mainTabs = [
               { key: 'new', label: 'New Movies', count: (newMoviesByPeriod.today?.length || 0) + (newMoviesByPeriod.yesterday?.length || 0) + (newMoviesByPeriod.older?.length || 0), visible: hasNewMovies },
               { key: 'existing', label: 'Existing Movies', count: (existingMoviesByPeriod.today?.length || 0) + (existingMoviesByPeriod.yesterday?.length || 0) + (existingMoviesByPeriod.older?.length || 0), visible: hasExistingMovies },
-              { key: 'unmatched', label: 'Unmatched Items', count: unmatchedItems?.length || 0, visible: hasUnmatched }
+              { key: 'unmatched', label: 'Unmatched Items', count: unmatchedItems?.length || 0, visible: hasUnmatched },
+              { key: 'ignored', label: 'Ignored Items', count: ignoredItems?.length || 0, visible: hasIgnored }
             ];
             let firstVisibleTab = mainTabs.findIndex(tab => tab.visible);
             if (firstVisibleTab === -1) firstVisibleTab = 0;
@@ -195,6 +197,18 @@
       <% if (hasUnmatched) { %>
         <div id="main-section-unmatched" class="main-section <%= firstVisibleTab === 2 ? '' : 'hidden' %>">
           <% unmatchedItems.forEach(movie => { %>
+            <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <!-- Ignored Items Section -->
+      <% if (hasIgnored) { %>
+        <div id="main-section-ignored" class="main-section <%= firstVisibleTab === 3 ? '' : 'hidden' %>">
+          <div class="mb-4">
+            <p class="text-gray-600">These items were ignored because they don't meet quality requirements or are below upgrade thresholds.</p>
+          </div>
+          <% ignoredItems.forEach(movie => { %>
             <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
           <% }); %>
         </div>

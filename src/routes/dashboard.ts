@@ -204,12 +204,15 @@ router.get('/', async (req: Request, res: Response) => {
         : releases.filter(r => !r.radarr_movie_id && (r.status === 'NEW' || r.status === 'ATTENTION_NEEDED'));
 
       // Existing releases: those with radarr_movie_id but not upgrade candidates
-      // Exclude IGNORED releases from existing (they're already handled, no need to show)
+      // Exclude IGNORED releases from existing (they'll be shown in Ignored tab)
       const existing = releases.filter(r => (
         !upgradeGuids.has(r.guid) &&
         (r.radarr_movie_id || hasRadarrMatch) &&
         r.status !== 'IGNORED' // Don't show ignored releases in existing section
       ));
+      
+      // Ignored releases: those with IGNORED status
+      const ignored = releases.filter(r => r.status === 'IGNORED');
       
       // Extract Radarr info from the first release that has existing_file_attributes
       let radarrInfo: any = null;
@@ -235,6 +238,7 @@ router.get('/', async (req: Request, res: Response) => {
         add,
         existing,
         upgrade,
+        ignored, // Add ignored releases
       });
     }
 
@@ -440,13 +444,19 @@ router.get('/', async (req: Request, res: Response) => {
       return 3; // EXISTING/IGNORED last
     };
 
-    // Filter out movie groups that have no releases to display
-    const filteredMovieGroups = movieGroups.filter(group => group.add.length > 0 || group.existing.length > 0 || group.upgrade.length > 0);
+    // Filter out movie groups that have no releases to display (but include ignored)
+    const filteredMovieGroups = movieGroups.filter(group => 
+      group.add.length > 0 || 
+      group.existing.length > 0 || 
+      group.upgrade.length > 0 || 
+      group.ignored.length > 0
+    );
 
-    // Separate into New Movies, Existing Movies, and Unmatched Items
+    // Separate into New Movies, Existing Movies, Unmatched Items, and Ignored Items
     const newMovies: typeof movieGroups = [];
     const existingMovies: typeof movieGroups = [];
     const unmatchedItems: typeof movieGroups = [];
+    const ignoredItems: typeof movieGroups = [];
 
     for (const group of filteredMovieGroups) {
       // Check if this is an unmatched item (no TMDB ID and no Radarr ID)
@@ -458,6 +468,9 @@ router.get('/', async (req: Request, res: Response) => {
       } else if (group.existing.length > 0) {
         // Only existing releases - goes to "Existing Movies"
         existingMovies.push(group);
+      } else if (group.ignored.length > 0) {
+        // Only ignored releases - goes to "Ignored Items"
+        ignoredItems.push(group);
       }
     }
 
@@ -502,7 +515,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     const newMoviesByPeriod = groupByTimePeriod(newMovies);
     const existingMoviesByPeriod = groupByTimePeriod(existingMovies);
-    // Unmatched items don't need time period grouping
+    // Unmatched and Ignored items don't need time period grouping
 
     // Get Radarr base URL for links
     const radarrBaseUrl = config.radarr.apiUrl.replace('/api/v3', '');
@@ -511,6 +524,7 @@ router.get('/', async (req: Request, res: Response) => {
       newMoviesByPeriod,
       existingMoviesByPeriod,
       unmatchedItems,
+      ignoredItems,
       radarrBaseUrl,
     });
   } catch (error) {
