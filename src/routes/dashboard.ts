@@ -9,6 +9,7 @@ import { Release } from '../types/Release';
 import { getSyncedRadarrMovieByTmdbId, getSyncedRadarrMovieByRadarrId } from '../services/radarrSync';
 import { runMatchingEngine } from '../services/matchingEngine';
 import { syncProgress } from '../services/syncProgress';
+import { parseReleaseFromTitle } from '../scoring/parseFromTitle';
 
 const router = Router();
 
@@ -237,7 +238,6 @@ router.get('/', async (req: Request, res: Response) => {
               
               // Parse attributes from filename if available
               if (movieFile.relativePath) {
-                const { parseReleaseFromTitle } = require('../scoring/parseFromTitle');
                 const parsed = parseReleaseFromTitle(movieFile.relativePath);
                 radarrInfo.codec = parsed.codec;
                 radarrInfo.resolution = parsed.resolution || radarrInfo.resolution;
