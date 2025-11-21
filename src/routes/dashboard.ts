@@ -189,6 +189,38 @@ router.get('/', async (req: Request, res: Response) => {
                             releases.find(r => r.tmdb_id) || 
                             releases[0];
       
+      // Ensure we have the proper title from TMDB/Radarr if we have IDs
+      // This ensures we use the actual movie title instead of the release filename
+      if (primaryRelease.tmdb_id && !primaryRelease.tmdb_title) {
+        // Try to get title from synced Radarr data
+        const syncedMovie = getSyncedRadarrMovieByTmdbId(primaryRelease.tmdb_id);
+        if (syncedMovie && syncedMovie.title) {
+          primaryRelease.tmdb_title = syncedMovie.title;
+        }
+      }
+      
+      if (primaryRelease.radarr_movie_id && !primaryRelease.radarr_movie_title) {
+        // Try to get title from synced Radarr data
+        const syncedMovie = getSyncedRadarrMovieByRadarrId(primaryRelease.radarr_movie_id);
+        if (syncedMovie && syncedMovie.title) {
+          primaryRelease.radarr_movie_title = syncedMovie.title;
+        }
+      }
+      
+      // Also update all releases in the group with the proper title if we found it
+      if (primaryRelease.tmdb_title || primaryRelease.radarr_movie_title) {
+        const properTitle = primaryRelease.radarr_movie_title || primaryRelease.tmdb_title;
+        for (const release of releases) {
+          if (!release.tmdb_title && !release.radarr_movie_title) {
+            if (primaryRelease.radarr_movie_title) {
+              release.radarr_movie_title = primaryRelease.radarr_movie_title;
+            } else if (primaryRelease.tmdb_title) {
+              release.tmdb_title = primaryRelease.tmdb_title;
+            }
+          }
+        }
+      }
+      
       const movieTitle = buildDisplayTitle(primaryRelease);
 
       const hasRadarrMatch = releases.some(r => Boolean(r.radarr_movie_id));
