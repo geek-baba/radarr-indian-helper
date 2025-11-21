@@ -48,6 +48,9 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
     if (omdbApiKey) {
       imdbClient.setApiKey(omdbApiKey);
     }
+    
+    // Initialize Radarr client for history fetching
+    radarrClient.updateConfig();
 
     // Get all synced RSS items
     const rssItems = getSyncedRssItems();
