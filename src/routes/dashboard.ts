@@ -192,10 +192,21 @@ router.get('/', async (req: Request, res: Response) => {
       // Ensure we have the proper title from TMDB/Radarr if we have IDs
       // This ensures we use the actual movie title instead of the release filename
       if (primaryRelease.tmdb_id && !primaryRelease.tmdb_title) {
-        // Try to get title from synced Radarr data
+        // Try to get title from synced Radarr data first
         const syncedMovie = getSyncedRadarrMovieByTmdbId(primaryRelease.tmdb_id);
         if (syncedMovie && syncedMovie.title) {
           primaryRelease.tmdb_title = syncedMovie.title;
+        } else if (tmdbApiKey) {
+          // If not in Radarr, fetch directly from TMDB API
+          try {
+            const tmdbMovie = await tmdbClient.getMovie(primaryRelease.tmdb_id);
+            if (tmdbMovie && tmdbMovie.title) {
+              primaryRelease.tmdb_title = tmdbMovie.title;
+            }
+          } catch (error) {
+            // Silently fail - will fall back to release title
+            console.error(`Error fetching TMDB title for ID ${primaryRelease.tmdb_id}:`, error);
+          }
         }
       }
       
@@ -622,6 +633,10 @@ router.get('/', async (req: Request, res: Response) => {
     // Get Radarr base URL for links
     const radarrBaseUrl = config.radarr.apiUrl.replace('/api/v3', '');
 
+    // Get last refresh time (matching engine last run)
+    const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;
+    const lastRefresh = lastRefreshResult?.value ? new Date(lastRefreshResult.value) : null;
+    
     res.render('dashboard', {
       newMoviesByPeriod,
       existingMoviesByPeriod,

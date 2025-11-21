@@ -514,6 +514,12 @@ export async function runMatchingEngine(): Promise<MatchingStats> {
     }
 
     console.log(`Matching engine completed: ${stats.processed} processed, ${stats.newReleases} new, ${stats.upgradeCandidates} upgrades, ${stats.existing} existing, ${stats.ignored} ignored, ${stats.errors} errors`);
+    
+    // Store last matching engine run time
+    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('matching_last_run', ?)").run(
+      new Date().toISOString()
+    );
+    
     return stats;
   } catch (error: any) {
     console.error('Matching engine error:', error);
