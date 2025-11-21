@@ -258,9 +258,10 @@ router.get('/', async (req: Request, res: Response) => {
         // because they represent an existing movie (just not an upgrade candidate)
       ));
       
-      // Ignored releases: those with IGNORED status AND no radarr_movie_id
-      // (releases with radarr_movie_id but IGNORED status are shown in Existing section)
-      const ignored = releases.filter(r => r.status === 'IGNORED' && !r.radarr_movie_id);
+      // Ignored releases: those with IGNORED status
+      // Note: Ignored releases are included in the movie group but won't create separate "Ignored Items" entries
+      // if the movie is matched (has TMDB/IMDB) or in Radarr
+      const ignored = releases.filter(r => r.status === 'IGNORED');
       
       // Extract Radarr info from synced Radarr movies table (more complete than release attributes)
       let radarrInfo: any = null;
@@ -575,16 +576,23 @@ router.get('/', async (req: Request, res: Response) => {
     for (const group of filteredMovieGroups) {
       // Check if this is an unmatched item (no TMDB ID and no Radarr ID)
       if (!group.tmdbId && !group.radarrMovieId) {
-        unmatchedItems.push(group);
+        // Unmatched items: if they have ignored releases, show in "Ignored Items", otherwise "Unmatched Items"
+        if (group.ignored.length > 0 && group.add.length === 0 && group.existing.length === 0 && group.upgrade.length === 0) {
+          ignoredItems.push(group);
+        } else {
+          unmatchedItems.push(group);
+        }
       } else if (group.add.length > 0 || group.upgrade.length > 0) {
-        // Has new releases or upgrades - goes to "New Movies"
+        // Has new releases or upgrades - goes to "New Movies" (even if some releases are ignored)
         newMovies.push(group);
-      } else if (group.existing.length > 0) {
-        // Only existing releases - goes to "Existing Movies"
+      } else if (group.existing.length > 0 || group.radarrMovieId) {
+        // Has existing releases or is in Radarr - goes to "Existing Movies"
+        // (ignored releases are included but don't create separate entries)
         existingMovies.push(group);
-      } else if (group.ignored.length > 0) {
-        // Only ignored releases - goes to "Ignored Items"
-        ignoredItems.push(group);
+      } else if (group.ignored.length > 0 && group.tmdbId) {
+        // Matched movie (has TMDB ID) but only ignored releases - still show in "New Movies"
+        // This handles the case where a movie is matched but all releases are ignored (e.g., all 2160p)
+        newMovies.push(group);
       }
     }
 
