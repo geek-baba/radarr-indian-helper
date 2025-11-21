@@ -235,7 +235,16 @@ router.get('/', async (req: Request, res: Response) => {
       
       const movieTitle = buildDisplayTitle(primaryRelease);
 
-      const hasRadarrMatch = releases.some(r => Boolean(r.radarr_movie_id));
+      // Check if movie is in Radarr by checking synced Radarr data (even if releases don't have radarr_movie_id set)
+      let hasRadarrMatch = releases.some(r => Boolean(r.radarr_movie_id));
+      if (!hasRadarrMatch && primaryRelease.tmdb_id) {
+        const syncedMovie = getSyncedRadarrMovieByTmdbId(primaryRelease.tmdb_id);
+        if (syncedMovie) {
+          hasRadarrMatch = true;
+          // Update primary release with radarr_movie_id
+          primaryRelease.radarr_movie_id = syncedMovie.radarr_id;
+        }
+      }
       
       // Categorize releases by state
       const upgrade = releases.filter(r => (
@@ -357,10 +366,25 @@ router.get('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Enrich with movie metadata (poster, IMDB, etc.)
+    // Enrich with movie metadata (poster, IMDB, etc.) and check if movie is in Radarr
     for (const movieGroup of movieGroups) {
       // Get all releases for this movie group
       const groupReleases = releasesByMovie[movieGroup.movieKey] || [];
+      
+      // Check if movie is in Radarr by checking synced Radarr data (even if releases don't have radarr_movie_id set)
+      if (movieGroup.tmdbId && !movieGroup.radarrMovieId) {
+        const syncedMovie = getSyncedRadarrMovieByTmdbId(movieGroup.tmdbId);
+        if (syncedMovie) {
+          // Movie exists in Radarr, update the group
+          movieGroup.radarrMovieId = syncedMovie.radarr_id;
+          // Also update all releases in the group to have radarr_movie_id
+          for (const release of groupReleases) {
+            if (!release.radarr_movie_id) {
+              release.radarr_movie_id = syncedMovie.radarr_id;
+            }
+          }
+        }
+      }
       
       // Get movie metadata if we have TMDB ID or Radarr movie ID
       if (movieGroup.tmdbId || movieGroup.radarrMovieId) {
