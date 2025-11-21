@@ -296,6 +296,43 @@
   <script>
     let progressInterval = null;
 
+    // Search/Filter functionality
+    function filterTable() {
+      const searchInput = document.getElementById('searchInput');
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('.item-row');
+      
+      if (!searchTerm) {
+        rows.forEach(row => {
+          row.style.display = '';
+        });
+        return;
+      }
+      
+      rows.forEach(row => {
+        const title = row.getAttribute('data-title') || '';
+        const feed = row.getAttribute('data-feed') || '';
+        const year = row.getAttribute('data-year') || '';
+        const tmdb = row.getAttribute('data-tmdb') || '';
+        const imdb = row.getAttribute('data-imdb') || '';
+        
+        const matches = 
+          title.includes(searchTerm) ||
+          feed.includes(searchTerm) ||
+          year.toString().includes(searchTerm) ||
+          tmdb.includes(searchTerm) ||
+          imdb.includes(searchTerm);
+        
+        row.style.display = matches ? '' : 'none';
+      });
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      filterTable();
+      document.getElementById('searchInput').focus();
+    }
+
     // Toast Notification System
     function startBackfill() {
       const button = document.getElementById('backfillButton');

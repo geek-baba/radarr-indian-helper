@@ -529,11 +529,13 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
  * Get all synced RSS feed items
  */
 export function getSyncedRssItems(feedId?: number): any[] {
+  // Use datetime() to ensure proper date sorting (SQLite TEXT dates need explicit datetime conversion)
   if (feedId) {
-    return db.prepare('SELECT * FROM rss_feed_items WHERE feed_id = ? ORDER BY published_at DESC').all(feedId);
+    return db.prepare('SELECT * FROM rss_feed_items WHERE feed_id = ? ORDER BY datetime(published_at) DESC').all(feedId);
   }
   // Sort by published_at DESC (newest first) - this is the feed release date
-  return db.prepare('SELECT * FROM rss_feed_items ORDER BY published_at DESC').all();
+  // Use datetime() to ensure proper date sorting
+  return db.prepare('SELECT * FROM rss_feed_items ORDER BY datetime(published_at) DESC').all();
 }
 
 /**
