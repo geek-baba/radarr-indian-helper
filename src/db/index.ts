@@ -119,6 +119,26 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_rss_feed_items_guid ON rss_feed_items(guid);
   CREATE INDEX IF NOT EXISTS idx_rss_feed_items_tmdb_id ON rss_feed_items(tmdb_id);
   CREATE INDEX IF NOT EXISTS idx_rss_feed_items_published_at ON rss_feed_items(published_at);
+
+  CREATE TABLE IF NOT EXISTS structured_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+    level TEXT NOT NULL CHECK(level IN ('DEBUG', 'INFO', 'WARN', 'ERROR')),
+    source TEXT NOT NULL,
+    message TEXT NOT NULL,
+    details TEXT,
+    file_path TEXT,
+    release_title TEXT,
+    job_id TEXT,
+    error_stack TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON structured_logs(timestamp DESC);
+  CREATE INDEX IF NOT EXISTS idx_logs_level ON structured_logs(level);
+  CREATE INDEX IF NOT EXISTS idx_logs_source ON structured_logs(source);
+  CREATE INDEX IF NOT EXISTS idx_logs_job_id ON structured_logs(job_id);
+  CREATE INDEX IF NOT EXISTS idx_logs_message ON structured_logs(message);
 `);
 
 // Migrate existing databases - add new columns if they don't exist
@@ -164,6 +184,32 @@ try {
   if (!radarrColumnNames.includes('date_added')) {
     db.exec('ALTER TABLE radarr_movies ADD COLUMN date_added TEXT');
     console.log('Added column: radarr_movies.date_added');
+  }
+  
+  // Check if structured_logs table exists
+  const logsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='structured_logs'").get();
+  if (!logsTable) {
+    db.exec(`
+      CREATE TABLE structured_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+        level TEXT NOT NULL CHECK(level IN ('DEBUG', 'INFO', 'WARN', 'ERROR')),
+        source TEXT NOT NULL,
+        message TEXT NOT NULL,
+        details TEXT,
+        file_path TEXT,
+        release_title TEXT,
+        job_id TEXT,
+        error_stack TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX idx_logs_timestamp ON structured_logs(timestamp DESC);
+      CREATE INDEX idx_logs_level ON structured_logs(level);
+      CREATE INDEX idx_logs_source ON structured_logs(source);
+      CREATE INDEX idx_logs_job_id ON structured_logs(job_id);
+      CREATE INDEX idx_logs_message ON structured_logs(message);
+    `);
+    console.log('Created table: structured_logs');
   }
 } catch (error) {
   console.error('Migration error:', error);

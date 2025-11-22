@@ -184,8 +184,18 @@ router.get('/rss/sync/progress', (req: Request, res: Response) => {
   }
 });
 
-// Logs page
+// Log Explorer page (new)
 router.get('/logs', (req: Request, res: Response) => {
+  try {
+    res.render('log-explorer');
+  } catch (error) {
+    console.error('Log Explorer page error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Old logs page (kept for backward compatibility, redirects to new explorer)
+router.get('/logs-old', (req: Request, res: Response) => {
   try {
     const filter = req.query.filter as string || '';
     const limit = parseInt(req.query.limit as string || '500', 10);

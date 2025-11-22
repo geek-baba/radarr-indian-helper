@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Explorer - Radarr Indian Helper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .log-level-DEBUG { color: #6b7280; }
+    .log-level-INFO { color: #3b82f6; }
+    .log-level-WARN { color: #f59e0b; }
+    .log-level-ERROR { color: #ef4444; }
+    .log-row:hover { background-color: #f3f4f6; }
+    .detail-drawer {
+      transition: transform 0.3s ease-in-out;
+    }
+    .detail-drawer.open {
+      transform: translateX(0);
+    }
+    .detail-drawer.closed {
+      transform: translateX(100%);
+    }
+    .json-viewer {
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <%- include('partials/sidebar', { currentPage: 'logs' }) %>
+  
+  <main class="ml-64 p-6">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-gray-900">Log Explorer</h1>
+      <p class="text-sm text-gray-600 mt-1">Professional debugging tool for automation workflows</p>
+    </div>
+
+    <!-- Search and Filters Bar -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <!-- Text Search -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+          <input 
+            type="text" 
+            id="searchInput"
+            placeholder="Search message, file path, release title..."
+            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <!-- Level Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Level</label>
+          <select id="levelFilter" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">All</option>
+            <option value="DEBUG">DEBUG</option>
+            <option value="INFO">INFO</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+          </select>
+        </div>
+
+        <!-- Source Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+          <select id="sourceFilter" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">All</option>
+            <option value="rss-sync">RSS Sync</option>
+            <option value="radarr-sync">Radarr Sync</option>
+            <option value="matching-engine">Matching Engine</option>
+            <option value="tmdb">TMDB</option>
+            <option value="imdb">IMDB</option>
+            <option value="radarr-api">Radarr API</option>
+            <option value="parser">Parser</option>
+            <option value="scoring">Scoring</option>
+            <option value="dashboard">Dashboard</option>
+            <option value="api">API</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <!-- Job ID Filter -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Job ID</label>
+          <input 
+            type="text" 
+            id="jobIdFilter"
+            placeholder="Filter by job ID..."
+            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <!-- Date From -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+          <input 
+            type="datetime-local" 
+            id="dateFromFilter"
+            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <!-- Date To -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+          <input 
+            type="datetime-local" 
+            id="dateToFilter"
+            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <!-- Error Only Checkbox -->
+        <div class="flex items-end">
+          <label class="flex items-center">
+            <input 
+              type="checkbox" 
+              id="errorOnlyFilter"
+              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="ml-2 text-sm text-gray-700">Errors & Warnings Only</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Active Filters Chips -->
+      <div id="activeFilters" class="flex flex-wrap gap-2 mb-2"></div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-between items-center">
+        <div class="flex gap-2">
+          <button 
+            onclick="applyFilters()" 
+            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            Apply Filters
+          </button>
+          <button 
+            onclick="clearFilters()" 
+            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            Clear
+          </button>
+          <button 
+            onclick="exportLogs()" 
+            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            Export
+          </button>
+        </div>
+        <div class="text-sm text-gray-600">
+          <span id="logCount">0</span> logs loaded
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File/Release</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job ID</th>
+            </tr>
+          </thead>
+          <tbody id="logsTableBody" class="bg-white divide-y divide-gray-200">
+            <!-- Logs will be loaded here -->
+          </tbody>
+        </table>
+      </div>
+      <div id="loadingIndicator" class="p-4 text-center text-gray-500 hidden">
+        Loading more logs...
+      </div>
+      <div id="noMoreLogs" class="p-4 text-center text-gray-500 hidden">
+        No more logs to load
+      </div>
+    </div>
+  </main>
+
+  <!-- Detail Drawer -->
+  <div id="detailDrawer" class="detail-drawer closed fixed right-0 top-0 h-full w-1/3 bg-white shadow-2xl z-50 overflow-y-auto">
+    <div class="p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Log Details</h2>
+        <button onclick="closeDetailDrawer()" class="text-gray-500 hover:text-gray-700">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="detailContent">
+        <!-- Detail content will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay for drawer -->
+  <div id="drawerOverlay" onclick="closeDetailDrawer()" class="hidden fixed inset-0 bg-black bg-opacity-50 z-40"></div>
+
+  <script>
+    let currentCursor = null;
+    let hasMore = true;
+    let isLoading = false;
+    let currentFilters = {};
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      loadLogs();
+      setupInfiniteScroll();
+    });
+
+    // Setup infinite scroll
+    function setupInfiniteScroll() {
+      window.addEventListener('scroll', () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
+          if (hasMore && !isLoading) {
+            loadMoreLogs();
+          }
+        }
+      });
+    }
+
+    // Load logs
+    async function loadLogs(reset = true) {
+      if (isLoading) return;
+      isLoading = true;
+
+      if (reset) {
+        currentCursor = null;
+        hasMore = true;
+        document.getElementById('logsTableBody').innerHTML = '';
+        document.getElementById('noMoreLogs').classList.add('hidden');
+      }
+
+      const params = new URLSearchParams();
+      if (currentCursor) params.append('cursor', currentCursor);
+      params.append('limit', '100');
+      
+      Object.entries(currentFilters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+
+      try {
+        const response = await fetch(`/api/logs?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+          renderLogs(data.logs);
+          hasMore = data.hasMore;
+          currentCursor = data.nextCursor;
+          document.getElementById('logCount').textContent = 
+            parseInt(document.getElementById('logCount').textContent) + data.count;
+          
+          if (!hasMore) {
+            document.getElementById('noMoreLogs').classList.remove('hidden');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading logs:', error);
+      } finally {
+        isLoading = false;
+        document.getElementById('loadingIndicator').classList.add('hidden');
+      }
+    }
+
+    // Load more logs
+    async function loadMoreLogs() {
+      if (!hasMore || isLoading) return;
+      document.getElementById('loadingIndicator').classList.remove('hidden');
+      await loadLogs(false);
+    }
+
+    // Render logs
+    function renderLogs(logs) {
+      const tbody = document.getElementById('logsTableBody');
+      logs.forEach(log => {
+        const row = document.createElement('tr');
+        row.className = 'log-row cursor-pointer';
+        row.onclick = () => showLogDetail(log.id);
+        
+        const timestamp = new Date(log.timestamp).toLocaleString();
+        const levelClass = `log-level-${log.level}`;
+        const message = truncate(log.message, 80);
+        const fileOrRelease = log.filePath || log.releaseTitle || '-';
+        const jobId = log.jobId ? `<a href="#" onclick="event.stopPropagation(); filterByJobId('${log.jobId}'); return false;" class="text-blue-600 hover:underline">${log.jobId}</a>` : '-';
+        
+        row.innerHTML = `
+          <td class="px-4 py-3 text-sm text-gray-900">${timestamp}</td>
+          <td class="px-4 py-3 text-sm ${levelClass} font-medium">${log.level}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${log.source}</td>
+          <td class="px-4 py-3 text-sm text-gray-900">${message}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${truncate(fileOrRelease, 40)}</td>
+          <td class="px-4 py-3 text-sm text-gray-600">${jobId}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // Show log detail
+    async function showLogDetail(logId) {
+      try {
+        const response = await fetch(`/api/logs/${logId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const log = data.log;
+          const content = document.getElementById('detailContent');
+          
+          content.innerHTML = `
+            <div class="space-y-4">
+              <div>
+                <label class="text-sm font-medium text-gray-700">Timestamp</label>
+                <p class="text-sm text-gray-900">${new Date(log.timestamp).toLocaleString()}</p>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-700">Level</label>
+                <p class="text-sm ${getLevelClass(log.level)} font-medium">${log.level}</p>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-700">Source</label>
+                <p class="text-sm text-gray-900">${log.source}</p>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-700">Message</label>
+                <p class="text-sm text-gray-900 whitespace-pre-wrap">${escapeHtml(log.message)}</p>
+              </div>
+              ${log.filePath ? `
+              <div>
+                <label class="text-sm font-medium text-gray-700">File Path</label>
+                <p class="text-sm text-gray-900 font-mono">${escapeHtml(log.filePath)}</p>
+              </div>
+              ` : ''}
+              ${log.releaseTitle ? `
+              <div>
+                <label class="text-sm font-medium text-gray-700">Release Title</label>
+                <p class="text-sm text-gray-900">${escapeHtml(log.releaseTitle)}</p>
+              </div>
+              ` : ''}
+              ${log.jobId ? `
+              <div>
+                <label class="text-sm font-medium text-gray-700">Job ID</label>
+                <p class="text-sm text-gray-900">
+                  <a href="#" onclick="filterByJobId('${log.jobId}'); return false;" class="text-blue-600 hover:underline">${log.jobId}</a>
+                </p>
+              </div>
+              ` : ''}
+              ${log.details ? `
+              <div>
+                <label class="text-sm font-medium text-gray-700">Details</label>
+                <pre class="json-viewer bg-gray-100 p-3 rounded border border-gray-300 overflow-auto max-h-96">${JSON.stringify(log.details, null, 2)}</pre>
+                <button onclick="copyToClipboard(JSON.stringify(${JSON.stringify(log.details)}, null, 2))" class="mt-2 text-sm text-blue-600 hover:underline">Copy JSON</button>
+              </div>
+              ` : ''}
+              ${log.errorStack ? `
+              <div>
+                <label class="text-sm font-medium text-gray-700">Error Stack</label>
+                <pre class="json-viewer bg-red-50 p-3 rounded border border-red-200 overflow-auto max-h-96 text-red-800">${escapeHtml(log.errorStack)}</pre>
+                <button onclick="copyToClipboard(\`${escapeHtml(log.errorStack)}\`)" class="mt-2 text-sm text-blue-600 hover:underline">Copy Stack</button>
+              </div>
+              ` : ''}
+            </div>
+          `;
+          
+          document.getElementById('detailDrawer').classList.remove('closed');
+          document.getElementById('detailDrawer').classList.add('open');
+          document.getElementById('drawerOverlay').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Error loading log detail:', error);
+      }
+    }
+
+    // Close detail drawer
+    function closeDetailDrawer() {
+      document.getElementById('detailDrawer').classList.remove('open');
+      document.getElementById('detailDrawer').classList.add('closed');
+      document.getElementById('drawerOverlay').classList.add('hidden');
+    }
+
+    // Apply filters
+    function applyFilters() {
+      const dateFrom = document.getElementById('dateFromFilter').value;
+      const dateTo = document.getElementById('dateToFilter').value;
+      
+      currentFilters = {
+        search: document.getElementById('searchInput').value.trim() || undefined,
+        level: document.getElementById('levelFilter').value || undefined,
+        source: document.getElementById('sourceFilter').value || undefined,
+        jobId: document.getElementById('jobIdFilter').value.trim() || undefined,
+        dateFrom: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+        dateTo: dateTo ? new Date(dateTo).toISOString() : undefined,
+        hasErrorOnly: document.getElementById('errorOnlyFilter').checked || undefined,
+      };
+      
+      // Remove undefined values
+      Object.keys(currentFilters).forEach(key => {
+        if (currentFilters[key] === undefined) delete currentFilters[key];
+      });
+      
+      updateActiveFilters();
+      document.getElementById('logCount').textContent = '0';
+      loadLogs(true);
+    }
+
+    // Clear filters
+    function clearFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('levelFilter').value = '';
+      document.getElementById('sourceFilter').value = '';
+      document.getElementById('jobIdFilter').value = '';
+      document.getElementById('dateFromFilter').value = '';
+      document.getElementById('dateToFilter').value = '';
+      document.getElementById('errorOnlyFilter').checked = false;
+      currentFilters = {};
+      updateActiveFilters();
+      document.getElementById('logCount').textContent = '0';
+      loadLogs(true);
+    }
+
+    // Filter by job ID
+    function filterByJobId(jobId) {
+      document.getElementById('jobIdFilter').value = jobId;
+      applyFilters();
+      closeDetailDrawer();
+    }
+
+    // Update active filters display
+    function updateActiveFilters() {
+      const container = document.getElementById('activeFilters');
+      container.innerHTML = '';
+      
+      Object.entries(currentFilters).forEach(([key, value]) => {
+        if (value) {
+          const chip = document.createElement('span');
+          chip.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800';
+          chip.innerHTML = `${key}: ${value} <button onclick="removeFilter('${key}')" class="ml-2 text-blue-600 hover:text-blue-800">×</button>`;
+          container.appendChild(chip);
+        }
+      });
+    }
+
+    // Remove filter
+    function removeFilter(key) {
+      delete currentFilters[key];
+      if (key === 'search') document.getElementById('searchInput').value = '';
+      if (key === 'level') document.getElementById('levelFilter').value = '';
+      if (key === 'source') document.getElementById('sourceFilter').value = '';
+      if (key === 'jobId') document.getElementById('jobIdFilter').value = '';
+      if (key === 'dateFrom') document.getElementById('dateFromFilter').value = '';
+      if (key === 'dateTo') document.getElementById('dateToFilter').value = '';
+      if (key === 'hasErrorOnly') document.getElementById('errorOnlyFilter').checked = false;
+      updateActiveFilters();
+      document.getElementById('logCount').textContent = '0';
+      loadLogs(true);
+    }
+
+    // Export logs
+    async function exportLogs() {
+      const format = confirm('Export as JSON? (Cancel for CSV)') ? 'json' : 'csv';
+      
+      try {
+        const response = await fetch('/api/logs/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ format, filters: currentFilters }),
+        });
+        
+        if (format === 'json') {
+          const data = await response.json();
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'logs.json';
+          a.click();
+        } else {
+          const text = await response.text();
+          const blob = new Blob([text], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'logs.csv';
+          a.click();
+        }
+      } catch (error) {
+        console.error('Error exporting logs:', error);
+        alert('Error exporting logs');
+      }
+    }
+
+    // Helper functions
+    function truncate(str, len) {
+      if (!str) return '-';
+      return str.length > len ? str.substring(0, len) + '...' : str;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function getLevelClass(level) {
+      return `log-level-${level}`;
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+  </script>
+</body>
+</html>
+

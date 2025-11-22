@@ -5,6 +5,7 @@ import dashboardRouter from './routes/dashboard';
 import actionsRouter from './routes/actions';
 import settingsRouter from './routes/settings';
 import dataRouter from './routes/data';
+import logsRouter from './routes/logs';
 import { settingsModel } from './models/settings';
 import { syncRadarrMovies } from './services/radarrSync';
 import { syncRssFeeds } from './services/rssSync';
@@ -24,6 +25,7 @@ app.use('/', dashboardRouter);
 app.use('/actions', actionsRouter);
 app.use('/settings', settingsRouter);
 app.use('/data', dataRouter);
+app.use('/api/logs', logsRouter);
 
 // Scheduled sync jobs
 let radarrSyncInterval: NodeJS.Timeout | null = null;
