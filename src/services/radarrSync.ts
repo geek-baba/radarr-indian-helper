@@ -151,12 +151,39 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
             stats.synced++;
           }
         } catch (error: any) {
+          // Build detailed error message
+          let errorMessage = 'Unknown error';
+          if (error?.message) {
+            errorMessage = error.message;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          } else if (error?.toString) {
+            errorMessage = error.toString();
+          }
+          
+          // Log full error details
+          console.error(`Error syncing movie ${movie.id} (${movie.title}):`, {
+            error: errorMessage,
+            errorType: error?.constructor?.name || typeof error,
+            stack: error?.stack,
+            movieData: {
+              radarr_id: movie.id,
+              tmdb_id: movie.tmdbId,
+              imdb_id: movie.imdbId,
+              title: movie.title,
+              year: movie.year,
+              hasFile: movie.hasFile,
+              hasMovieFile: !!movie.movieFile,
+              hasImages: !!movie.images,
+            },
+            rawError: error,
+          });
+          
           stats.errors.push({
             movieId: movie.id || 0,
             title: movie.title,
-            error: error?.message || 'Unknown error',
+            error: errorMessage,
           });
-          console.error(`Error syncing movie ${movie.id} (${movie.title}):`, error);
         }
       }
     });
