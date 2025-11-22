@@ -700,9 +700,26 @@ router.get('/', async (req: Request, res: Response) => {
     // Also handle trailing slashes
     let radarrBaseUrl = '';
     if (radarrApiUrl) {
-      radarrBaseUrl = radarrApiUrl.replace(/\/api\/v3\/?$/, '').replace(/\/$/, '');
+      // Remove /api/v3 or /api/v3/ from the end (case insensitive)
+      radarrBaseUrl = radarrApiUrl
+        .replace(/\/api\/v3\/?$/i, '')  // Remove /api/v3 or /api/v3/
+        .replace(/\/$/, '');              // Remove trailing slash
+      
       console.log(`[Dashboard] Radarr API URL from settings: ${radarrApiUrl}`);
       console.log(`[Dashboard] Radarr base URL for links: ${radarrBaseUrl}`);
+      
+      // Validate the URL
+      if (!radarrBaseUrl) {
+        console.error('[Dashboard] ERROR: Radarr base URL is empty after processing!');
+      } else {
+        // Test URL format
+        try {
+          const testUrl = new URL(radarrBaseUrl);
+          console.log(`[Dashboard] Radarr base URL validated: ${testUrl.protocol}//${testUrl.host}`);
+        } catch (e) {
+          console.error(`[Dashboard] ERROR: Invalid Radarr base URL format: ${radarrBaseUrl}`);
+        }
+      }
     } else {
       console.warn('[Dashboard] No Radarr API URL found in settings');
     }
