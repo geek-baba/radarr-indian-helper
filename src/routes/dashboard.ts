@@ -333,6 +333,34 @@ router.get('/', async (req: Request, res: Response) => {
                       date: lastDownload.date || null,
                       releaseGroup: lastDownload.data?.releaseGroup || null,
                     };
+                    
+                    // Parse lastDownload.sourceTitle to extract metadata if missing
+                    if (lastDownload.sourceTitle && (!radarrInfo.resolution || radarrInfo.resolution === 'UNKNOWN' || 
+                        !radarrInfo.codec || radarrInfo.codec === 'UNKNOWN' || 
+                        !radarrInfo.sourceTag || radarrInfo.sourceTag === 'OTHER' ||
+                        !radarrInfo.audio || radarrInfo.audio === 'Unknown')) {
+                      try {
+                        const parsed = parseReleaseFromTitle(lastDownload.sourceTitle);
+                        // Only use parsed values if current values are missing/unknown
+                        if (!radarrInfo.resolution || radarrInfo.resolution === 'UNKNOWN') {
+                          radarrInfo.resolution = parsed.resolution;
+                        }
+                        if (!radarrInfo.codec || radarrInfo.codec === 'UNKNOWN') {
+                          radarrInfo.codec = parsed.codec;
+                        }
+                        if (!radarrInfo.sourceTag || radarrInfo.sourceTag === 'OTHER') {
+                          radarrInfo.sourceTag = parsed.sourceTag;
+                        }
+                        if (!radarrInfo.audio || radarrInfo.audio === 'Unknown') {
+                          radarrInfo.audio = parsed.audio;
+                        }
+                        if (!radarrInfo.sizeMb && parsed.sizeMb) {
+                          radarrInfo.sizeMb = parsed.sizeMb;
+                        }
+                      } catch (e) {
+                        console.error('Error parsing lastDownload.sourceTitle:', e);
+                      }
+                    }
                   }
                 }
               } catch (e) {

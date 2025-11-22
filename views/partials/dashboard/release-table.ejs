@@ -75,18 +75,41 @@
               </div>
             </td>
             <td class="px-3 py-2 text-sm">
-              <div class="flex gap-1 flex-wrap">
+              <div class="flex gap-1 flex-wrap items-center">
                 <% if (r.resolution) { %>
-                  <span class="badge badge-neutral"><%= r.resolution %></span>
+                  <div class="flex items-center gap-1 badge badge-neutral">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/>
+                      <path d="M3 9h18M9 3v18"/>
+                    </svg>
+                    <span><%= r.resolution %></span>
+                  </div>
                 <% } %>
                 <% if (r.codec) { %>
-                  <span class="badge badge-neutral"><%= r.codec %></span>
+                  <div class="flex items-center gap-1 badge badge-neutral">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    <span><%= r.codec %></span>
+                  </div>
                 <% } %>
                 <% if (r.source_tag) { %>
-                  <span class="badge badge-neutral"><%= r.source_tag %></span>
+                  <div class="flex items-center gap-1 badge badge-neutral">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <span><%= r.source_tag %></span>
+                  </div>
                 <% } %>
                 <% if (r.audio) { %>
-                  <span class="badge badge-info"><%= r.audio %></span>
+                  <div class="flex items-center gap-1 badge badge-info">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    </svg>
+                    <span><%= r.audio %></span>
+                  </div>
                 <% } %>
               </div>
               <% if (r.audio_languages) { %>
