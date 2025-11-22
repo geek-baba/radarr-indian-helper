@@ -12,10 +12,17 @@ const MAX_LOGS = 1000;
 const logs: LogEntry[] = [];
 
 // Override console methods to capture logs
+// Store original methods both locally and on console object for structuredLogging to access
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
 const originalConsoleInfo = console.info;
+
+// Store on console object so structuredLogging can access them
+(console as any).__originalLog = originalConsoleLog;
+(console as any).__originalError = originalConsoleError;
+(console as any).__originalWarn = originalConsoleWarn;
+(console as any).__originalInfo = originalConsoleInfo;
 
 function addLog(level: LogEntry['level'], ...args: any[]) {
   const message = args.map(arg => {

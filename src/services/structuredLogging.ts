@@ -116,10 +116,17 @@ export function log(
   }
   
   // Also log to console for backward compatibility
-  const consoleMethod = level === 'ERROR' ? console.error :
-                        level === 'WARN' ? console.warn :
-                        level === 'INFO' ? console.info :
-                        console.log;
+  // IMPORTANT: Use original console methods to avoid infinite loop with logStorage
+  // Store references to original console methods before they're overridden
+  const originalConsoleLog = (console as any).__originalLog || console.log;
+  const originalConsoleError = (console as any).__originalError || console.error;
+  const originalConsoleWarn = (console as any).__originalWarn || console.warn;
+  const originalConsoleInfo = (console as any).__originalInfo || console.info;
+  
+  const consoleMethod = level === 'ERROR' ? originalConsoleError :
+                        level === 'WARN' ? originalConsoleWarn :
+                        level === 'INFO' ? originalConsoleInfo :
+                        originalConsoleLog;
   
   const prefix = `[${level}] [${source}]`;
   if (options?.error) {
