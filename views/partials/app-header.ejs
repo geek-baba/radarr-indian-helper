@@ -1,0 +1,32 @@
+<header class="sticky top-0 z-30 bg-[var(--surface)] dark:bg-brand-surfaceDark border-b border-[var(--border)] shadow-header">
+  <div class="h-16 px-4 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <button id="openSidebar" class="icon-btn lg:hidden" aria-label="Open sidebar" type="button">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+
+      <input 
+        id="globalSearch" 
+        type="search" 
+        placeholder="Search… (⌘K / Ctrl+K)"
+        class="w-72 lg:w-[32rem] rounded-xl border border-[var(--border)] bg-white/70 dark:bg-white/5 px-4 py-2 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+        aria-label="Global search"
+      />
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button 
+        id="refreshBtn" 
+        class="px-3 py-2 rounded-xl bg-brand-primary text-white hover:bg-blue-600 transition-colors font-medium text-sm"
+        type="button"
+        aria-label="Refresh page"
+      >
+        Refresh
+      </button>
+      <%- include('dark-mode-toggle') %>
+    </div>
+  </div>
+</header>
+

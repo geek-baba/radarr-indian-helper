@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<%= typeof theme !== 'undefined' && theme === 'dark' ? 'dark' : '' %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Log Explorer - Radarr Indian Helper</title>
+  <title>Log Explorer — desiarr</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     .log-level-DEBUG { color: #6b7280; }
     .log-level-INFO { color: #3b82f6; }
@@ -28,17 +29,20 @@
     }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <%- include('partials/sidebar', { currentPage: 'logs' }) %>
+<body class="bg-[var(--bg)] text-[var(--text)] min-h-screen">
+  <%- include('partials/app-sidebar', { currentPage: 'logs' }) %>
   
-  <main class="ml-64 p-6">
+  <div class="lg:pl-64">
+    <%- include('partials/app-header') %>
+    
+    <main class="p-4 lg:p-6">
     <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900">Log Explorer</h1>
-      <p class="text-sm text-gray-600 mt-1">Professional debugging tool for automation workflows</p>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Log Explorer</h1>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Professional debugging tool for automation workflows</p>
     </div>
 
     <!-- Search and Filters Bar -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <!-- Text Search -->
         <div class="md:col-span-2">
@@ -185,7 +189,8 @@
         No more logs to load
       </div>
     </div>
-  </main>
+    </main>
+  </div>
 
   <!-- Detail Drawer -->
   <div id="detailDrawer" class="detail-drawer closed fixed right-0 top-0 h-full w-1/3 bg-white shadow-2xl z-50 overflow-y-auto">
@@ -520,6 +525,7 @@
       });
     }
   </script>
+  <script src="/js/ui.js"></script>
 </body>
 </html>
 

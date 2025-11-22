@@ -1,0 +1,48 @@
+/* Custom CSS for desiarr - works with Tailwind CDN */
+:root {
+  --bg: #F9FAFB;
+  --surface: #FFFFFF;
+  --text: #0F172A;
+  --border: #E5E7EB;
+}
+
+.dark {
+  --bg: #0B1220;
+  --surface: #0F172A;
+  --text: #E5E7EB;
+  --border: #1E293B;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Utility classes */
+.card {
+  @apply rounded-2xl bg-[var(--surface)] shadow-card border border-[var(--border)];
+}
+
+.icon-btn {
+  @apply p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition-colors;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border;
+}
+
+/* Sidebar transitions */
+#sidebar {
+  transition: transform 0.3s ease-in-out;
+}
+
+#sidebarOverlay {
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+

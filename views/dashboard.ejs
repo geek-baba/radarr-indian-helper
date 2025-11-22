@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<%= typeof theme !== 'undefined' && theme === 'dark' ? 'dark' : '' %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - Radarr Indian Helper</title>
+  <title>Dashboard — desiarr</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     @keyframes slideIn {
       from {
@@ -34,231 +35,236 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-[var(--bg)] text-[var(--text)] min-h-screen">
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
-  <%- include('partials/sidebar', { currentPage: 'dashboard' }) %>
   
-  <main class="ml-64 p-8">
-    <div class="mb-6 flex justify-between items-center">
-      <div>
-        <h2 class="text-2xl font-bold">Dashboard</h2>
-        <% if (lastRefresh) { %>
-          <p class="text-sm text-gray-600 mt-1">
-            Last refreshed: <span class="font-medium" id="lastRefreshTime" data-utc="<%= lastRefresh %>">Loading...</span>
-          </p>
-        <% } else { %>
-          <p class="text-sm text-gray-500 mt-1">Last refreshed: Never</p>
-        <% } %>
-      </div>
-      <div class="flex items-center gap-4">
-        <div id="progressContainer" class="hidden flex-1 max-w-md">
-          <div class="bg-gray-200 rounded-full h-2">
-            <div id="progressBar" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-          </div>
-          <div id="progressText" class="text-xs text-gray-600 mt-1"></div>
+  <%- include('partials/app-sidebar', { currentPage: 'dashboard' }) %>
+  
+  <div class="lg:pl-64">
+    <%- include('partials/app-header') %>
+    
+    <main class="p-4 lg:p-6">
+      <div class="mb-6 flex justify-between items-center">
+        <div>
+          <h2 class="text-2xl font-bold">Dashboard</h2>
+          <% if (lastRefresh) { %>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Last refreshed: <span class="font-medium" id="lastRefreshTime" data-utc="<%= lastRefresh %>">Loading...</span>
+            </p>
+          <% } else { %>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Last refreshed: Never</p>
+          <% } %>
         </div>
-        <button onclick="refreshDashboard()" id="refreshButton" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-          Refresh Dashboard
-        </button>
-      </div>
-    </div>
-
-    <% 
-      // Define these variables BEFORE the search box so they can be used in the condition
-      const hasNewMovies = newMoviesByPeriod && (
-        (newMoviesByPeriod.today && newMoviesByPeriod.today.length > 0) ||
-        (newMoviesByPeriod.yesterday && newMoviesByPeriod.yesterday.length > 0) ||
-        (newMoviesByPeriod.older && newMoviesByPeriod.older.length > 0)
-      );
-      const hasExistingMovies = existingMoviesByPeriod && (
-        (existingMoviesByPeriod.today && existingMoviesByPeriod.today.length > 0) ||
-        (existingMoviesByPeriod.yesterday && existingMoviesByPeriod.yesterday.length > 0) ||
-        (existingMoviesByPeriod.older && existingMoviesByPeriod.older.length > 0)
-      );
-      const hasUnmatched = unmatchedItems && unmatchedItems.length > 0;
-    %>
-
-    <!-- Search Box -->
-    <% if (hasNewMovies || hasExistingMovies || hasUnmatched) { %>
-      <div class="mb-6">
-        <div class="relative max-w-md">
-          <input 
-            type="text" 
-            id="searchInput" 
-            placeholder="Search movies, titles, releases..." 
-            class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            oninput="filterMovies()"
-            onkeydown="handleSearchKeydown(event)"
-          />
-          <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <button 
-            id="clearSearchBtn" 
-            onclick="clearSearch()" 
-            class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 hidden"
-            style="display: none;"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
+        <div class="flex items-center gap-4">
+          <div id="progressContainer" class="hidden flex-1 max-w-md">
+            <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div id="progressBar" class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div id="progressText" class="text-xs text-gray-600 dark:text-gray-400 mt-1"></div>
+          </div>
+          <button onclick="refreshDashboard()" id="refreshButton" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+            Refresh Dashboard
           </button>
         </div>
-        <p id="searchResultsCount" class="text-sm text-gray-600 mt-2 hidden"></p>
-      </div>
-    <% } %>
-
-    <% if (!hasNewMovies && !hasExistingMovies && !hasUnmatched) { %>
-      <p class="text-gray-600">No releases found. Go to Settings to add RSS feeds and sync data.</p>
-    <% } else { %>
-      
-      <!-- Top-level Tabs -->
-      <div class="mb-6 border-b border-gray-200">
-        <nav class="flex space-x-8" aria-label="Main Sections">
-          <% 
-            const mainTabs = [
-              { key: 'new', label: 'New Movies', count: (newMoviesByPeriod.today?.length || 0) + (newMoviesByPeriod.yesterday?.length || 0) + (newMoviesByPeriod.older?.length || 0), visible: hasNewMovies },
-              { key: 'existing', label: 'Existing Movies', count: (existingMoviesByPeriod.today?.length || 0) + (existingMoviesByPeriod.yesterday?.length || 0) + (existingMoviesByPeriod.older?.length || 0), visible: hasExistingMovies },
-              { key: 'unmatched', label: 'Unmatched Items', count: unmatchedItems?.length || 0, visible: hasUnmatched },
-            ];
-            let firstVisibleTab = mainTabs.findIndex(tab => tab.visible);
-            if (firstVisibleTab === -1) firstVisibleTab = 0;
-          %>
-          <% mainTabs.forEach((tab, index) => { %>
-            <% if (tab.visible) { %>
-              <button 
-                onclick="showMainSection('<%= tab.key %>')" 
-                id="main-tab-<%= tab.key %>"
-                class="<%= index === firstVisibleTab ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-4 px-1 border-b-2 font-medium text-sm"
-              >
-                <%= tab.label %> (<%= tab.count %>)
-              </button>
-            <% } %>
-          <% }); %>
-        </nav>
       </div>
 
-      <!-- New Movies Section -->
-      <% if (hasNewMovies) { %>
-        <div id="main-section-new" class="main-section <%= firstVisibleTab === 0 ? '' : 'hidden' %>">
-          <!-- Time Period Tabs for New Movies -->
-          <div class="mb-4 border-b border-gray-200">
-            <nav class="flex space-x-8" aria-label="Time Periods">
-              <% const newPeriods = [
-                { key: 'today', label: 'Today', count: newMoviesByPeriod.today?.length || 0 },
-                { key: 'yesterday', label: 'Yesterday', count: newMoviesByPeriod.yesterday?.length || 0 },
-                { key: 'older', label: 'Older', count: newMoviesByPeriod.older?.length || 0 }
-              ]; %>
-              <% 
-                let firstNewIndex = -1;
-                newPeriods.forEach((period, index) => {
-                  if (period.count > 0 && firstNewIndex === -1) {
-                    firstNewIndex = index;
-                  }
-                });
-              %>
-              <% newPeriods.forEach((period, index) => { %>
-                <% if (period.count > 0) { %>
-                  <button 
-                    onclick="showNewMoviesPeriod('<%= period.key %>')" 
-                    id="new-tab-<%= period.key %>"
-                    class="<%= index === firstNewIndex ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-2 px-1 border-b-2 font-medium text-sm"
-                  >
-                    <%= period.label %> (<%= period.count %>)
-                  </button>
-                <% } %>
-              <% }); %>
-            </nav>
+      <% 
+        // Define these variables BEFORE the search box so they can be used in the condition
+        const hasNewMovies = newMoviesByPeriod && (
+          (newMoviesByPeriod.today && newMoviesByPeriod.today.length > 0) ||
+          (newMoviesByPeriod.yesterday && newMoviesByPeriod.yesterday.length > 0) ||
+          (newMoviesByPeriod.older && newMoviesByPeriod.older.length > 0)
+        );
+        const hasExistingMovies = existingMoviesByPeriod && (
+          (existingMoviesByPeriod.today && existingMoviesByPeriod.today.length > 0) ||
+          (existingMoviesByPeriod.yesterday && existingMoviesByPeriod.yesterday.length > 0) ||
+          (existingMoviesByPeriod.older && existingMoviesByPeriod.older.length > 0)
+        );
+        const hasUnmatched = unmatchedItems && unmatchedItems.length > 0;
+      %>
+
+      <!-- Search Box -->
+      <% if (hasNewMovies || hasExistingMovies || hasUnmatched) { %>
+        <div class="mb-6">
+          <div class="relative max-w-md">
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Search movies, titles, releases..." 
+              class="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              oninput="filterMovies()"
+              onkeydown="handleSearchKeydown(event)"
+            />
+            <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <button 
+              id="clearSearchBtn" 
+              onclick="clearSearch()" 
+              class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden"
+              style="display: none;"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
           </div>
-
-          <!-- New Movies Time Period Sections -->
-          <% newPeriods.forEach((period, index) => { %>
-            <% if (newMoviesByPeriod[period.key] && newMoviesByPeriod[period.key].length > 0) { %>
-              <div id="new-period-<%= period.key %>" class="new-movies-section <%= index === firstNewIndex ? '' : 'hidden' %>">
-                <% newMoviesByPeriod[period.key].forEach(movie => { %>
-                  <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
-                <% }); %>
-              </div>
-            <% } %>
-          <% }); %>
+          <p id="searchResultsCount" class="text-sm text-gray-600 dark:text-gray-400 mt-2 hidden"></p>
         </div>
       <% } %>
 
-      <!-- Existing Movies Section -->
-      <% if (hasExistingMovies) { %>
-        <div id="main-section-existing" class="main-section <%= firstVisibleTab === 1 ? '' : 'hidden' %>">
-          <!-- Time Period Tabs for Existing Movies -->
-          <div class="mb-4 border-b border-gray-200">
-            <nav class="flex space-x-8" aria-label="Time Periods">
-              <% const existingPeriods = [
-                { key: 'today', label: 'Today', count: existingMoviesByPeriod.today?.length || 0 },
-                { key: 'yesterday', label: 'Yesterday', count: existingMoviesByPeriod.yesterday?.length || 0 },
-                { key: 'older', label: 'Older', count: existingMoviesByPeriod.older?.length || 0 }
-              ]; %>
-              <% 
-                let firstExistingIndex = -1;
-                existingPeriods.forEach((period, index) => {
-                  if (period.count > 0 && firstExistingIndex === -1) {
-                    firstExistingIndex = index;
-                  }
-                });
-              %>
-              <% existingPeriods.forEach((period, index) => { %>
-                <% if (period.count > 0) { %>
-                  <button 
-                    onclick="showExistingMoviesPeriod('<%= period.key %>')" 
-                    id="existing-tab-<%= period.key %>"
-                    class="<%= index === firstExistingIndex ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' %> py-2 px-1 border-b-2 font-medium text-sm"
-                  >
-                    <%= period.label %> (<%= period.count %>)
-                  </button>
-                <% } %>
-              <% }); %>
-            </nav>
+      <% if (!hasNewMovies && !hasExistingMovies && !hasUnmatched) { %>
+        <p class="text-gray-600 dark:text-gray-400">No releases found. Go to Settings to add RSS feeds and sync data.</p>
+      <% } else { %>
+        
+        <!-- Top-level Tabs -->
+        <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+          <nav class="flex space-x-8" aria-label="Main Sections">
+            <% 
+              const mainTabs = [
+                { key: 'new', label: 'New Movies', count: (newMoviesByPeriod.today?.length || 0) + (newMoviesByPeriod.yesterday?.length || 0) + (newMoviesByPeriod.older?.length || 0), visible: hasNewMovies },
+                { key: 'existing', label: 'Existing Movies', count: (existingMoviesByPeriod.today?.length || 0) + (existingMoviesByPeriod.yesterday?.length || 0) + (existingMoviesByPeriod.older?.length || 0), visible: hasExistingMovies },
+                { key: 'unmatched', label: 'Unmatched Items', count: unmatchedItems?.length || 0, visible: hasUnmatched },
+              ];
+              let firstVisibleTab = mainTabs.findIndex(tab => tab.visible);
+              if (firstVisibleTab === -1) firstVisibleTab = 0;
+            %>
+            <% mainTabs.forEach((tab, index) => { %>
+              <% if (tab.visible) { %>
+                <button 
+                  onclick="showMainSection('<%= tab.key %>')" 
+                  id="main-tab-<%= tab.key %>"
+                  class="<%= index === firstVisibleTab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' %> py-4 px-1 border-b-2 font-medium text-sm"
+                >
+                  <%= tab.label %> (<%= tab.count %>)
+                </button>
+              <% } %>
+            <% }); %>
+          </nav>
+        </div>
+
+        <!-- New Movies Section -->
+        <% if (hasNewMovies) { %>
+          <div id="main-section-new" class="main-section <%= firstVisibleTab === 0 ? '' : 'hidden' %>">
+            <!-- Time Period Tabs for New Movies -->
+            <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+              <nav class="flex space-x-8" aria-label="Time Periods">
+                <% const newPeriods = [
+                  { key: 'today', label: 'Today', count: newMoviesByPeriod.today?.length || 0 },
+                  { key: 'yesterday', label: 'Yesterday', count: newMoviesByPeriod.yesterday?.length || 0 },
+                  { key: 'older', label: 'Older', count: newMoviesByPeriod.older?.length || 0 }
+                ]; %>
+                <% 
+                  let firstNewIndex = -1;
+                  newPeriods.forEach((period, index) => {
+                    if (period.count > 0 && firstNewIndex === -1) {
+                      firstNewIndex = index;
+                    }
+                  });
+                %>
+                <% newPeriods.forEach((period, index) => { %>
+                  <% if (period.count > 0) { %>
+                    <button 
+                      onclick="showNewMoviesPeriod('<%= period.key %>')" 
+                      id="new-tab-<%= period.key %>"
+                      class="<%= index === firstNewIndex ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' %> py-2 px-1 border-b-2 font-medium text-sm"
+                    >
+                      <%= period.label %> (<%= period.count %>)
+                    </button>
+                  <% } %>
+                <% }); %>
+              </nav>
+            </div>
+
+            <!-- New Movies Time Period Sections -->
+            <% newPeriods.forEach((period, index) => { %>
+              <% if (newMoviesByPeriod[period.key] && newMoviesByPeriod[period.key].length > 0) { %>
+                <div id="new-period-<%= period.key %>" class="new-movies-section <%= index === firstNewIndex ? '' : 'hidden' %>">
+                  <% newMoviesByPeriod[period.key].forEach(movie => { %>
+                    <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
+                  <% }); %>
+                </div>
+              <% } %>
+            <% }); %>
           </div>
+        <% } %>
 
-          <!-- Existing Movies Time Period Sections -->
-          <% existingPeriods.forEach((period, index) => { %>
-            <% if (existingMoviesByPeriod[period.key] && existingMoviesByPeriod[period.key].length > 0) { %>
-              <div id="existing-period-<%= period.key %>" class="existing-movies-section <%= index === firstExistingIndex ? '' : 'hidden' %>">
-                <% existingMoviesByPeriod[period.key].forEach(movie => { %>
-                  <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
+        <!-- Existing Movies Section -->
+        <% if (hasExistingMovies) { %>
+          <div id="main-section-existing" class="main-section <%= firstVisibleTab === 1 ? '' : 'hidden' %>">
+            <!-- Time Period Tabs for Existing Movies -->
+            <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
+              <nav class="flex space-x-8" aria-label="Time Periods">
+                <% const existingPeriods = [
+                  { key: 'today', label: 'Today', count: existingMoviesByPeriod.today?.length || 0 },
+                  { key: 'yesterday', label: 'Yesterday', count: existingMoviesByPeriod.yesterday?.length || 0 },
+                  { key: 'older', label: 'Older', count: existingMoviesByPeriod.older?.length || 0 }
+                ]; %>
+                <% 
+                  let firstExistingIndex = -1;
+                  existingPeriods.forEach((period, index) => {
+                    if (period.count > 0 && firstExistingIndex === -1) {
+                      firstExistingIndex = index;
+                    }
+                  });
+                %>
+                <% existingPeriods.forEach((period, index) => { %>
+                  <% if (period.count > 0) { %>
+                    <button 
+                      onclick="showExistingMoviesPeriod('<%= period.key %>')" 
+                      id="existing-tab-<%= period.key %>"
+                      class="<%= index === firstExistingIndex ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' %> py-2 px-1 border-b-2 font-medium text-sm"
+                    >
+                      <%= period.label %> (<%= period.count %>)
+                    </button>
+                  <% } %>
                 <% }); %>
-              </div>
-            <% } %>
-          <% }); %>
-        </div>
+              </nav>
+            </div>
+
+            <!-- Existing Movies Time Period Sections -->
+            <% existingPeriods.forEach((period, index) => { %>
+              <% if (existingMoviesByPeriod[period.key] && existingMoviesByPeriod[period.key].length > 0) { %>
+                <div id="existing-period-<%= period.key %>" class="existing-movies-section <%= index === firstExistingIndex ? '' : 'hidden' %>">
+                  <% existingMoviesByPeriod[period.key].forEach(movie => { %>
+                    <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
+                  <% }); %>
+                </div>
+              <% } %>
+            <% }); %>
+          </div>
+        <% } %>
+
+        <!-- Unmatched Items Section -->
+        <% if (hasUnmatched) { %>
+          <div id="main-section-unmatched" class="main-section <%= firstVisibleTab === 2 ? '' : 'hidden' %>">
+            <% unmatchedItems.forEach(movie => { %>
+              <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
+            <% }); %>
+          </div>
+        <% } %>
+
+
       <% } %>
-
-      <!-- Unmatched Items Section -->
-      <% if (hasUnmatched) { %>
-        <div id="main-section-unmatched" class="main-section <%= firstVisibleTab === 2 ? '' : 'hidden' %>">
-          <% unmatchedItems.forEach(movie => { %>
-            <%- include('partials/movie-card', { movie, radarrBaseUrl }) %>
-          <% }); %>
-        </div>
-      <% } %>
-
-
-    <% } %>
-  </main>
+    </main>
+  </div>
 
   <!-- Add Movie Modal -->
   <div id="addMovieModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 max-w-md w-full">
-      <h3 class="text-xl font-semibold mb-4">Add Movie to Radarr</h3>
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+      <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Add Movie to Radarr</h3>
       <form id="addMovieForm" onsubmit="submitAddMovie(event)">
         <input type="hidden" id="addMovieReleaseId" name="releaseId">
         <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">Quality Profile:</label>
-          <select id="qualityProfileSelect" name="qualityProfileId" required class="w-full border rounded px-2 py-1">
+          <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Quality Profile:</label>
+          <select id="qualityProfileSelect" name="qualityProfileId" required class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
             <option value="">Loading...</option>
           </select>
         </div>
         <div class="mb-4">
-          <label class="block text-sm font-medium mb-2">Root Folder:</label>
-          <select id="rootFolderSelect" name="rootFolderPath" required class="w-full border rounded px-2 py-1">
+          <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Root Folder:</label>
+          <select id="rootFolderSelect" name="rootFolderPath" required class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
             <option value="">Loading...</option>
           </select>
         </div>
@@ -274,6 +280,7 @@
     </div>
   </div>
 
+  <script src="/js/ui.js"></script>
   <script>
     // Toast Notification System
     function showToast(message, type = 'info', duration = 5000) {
@@ -315,9 +322,9 @@
       const overlay = document.createElement('div');
       overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
       overlay.innerHTML = `
-        <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-          <h3 class="text-lg font-semibold mb-4">Confirm</h3>
-          <p class="text-gray-700 mb-6">${message}</p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+          <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Confirm</h3>
+          <p class="text-gray-700 dark:text-gray-300 mb-6">${message}</p>
           <div class="flex justify-end space-x-3">
             <button class="cancel-btn bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
               Cancel
@@ -360,11 +367,11 @@
       
       // Update tab styles
       document.querySelectorAll('[id^="main-tab-"]').forEach(tab => {
-        tab.classList.remove('border-blue-500', 'text-blue-600');
-        tab.classList.add('border-transparent', 'text-gray-500');
+        tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+        tab.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
       });
-      document.getElementById(`main-tab-${section}`).classList.remove('border-transparent', 'text-gray-500');
-      document.getElementById(`main-tab-${section}`).classList.add('border-blue-500', 'text-blue-600');
+      document.getElementById(`main-tab-${section}`).classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+      document.getElementById(`main-tab-${section}`).classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
     }
 
     // Tab switching for New Movies
@@ -378,11 +385,11 @@
       
       // Update tab styles
       document.querySelectorAll('[id^="new-tab-"]').forEach(tab => {
-        tab.classList.remove('border-blue-500', 'text-blue-600');
-        tab.classList.add('border-transparent', 'text-gray-500');
+        tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+        tab.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
       });
-      document.getElementById(`new-tab-${period}`).classList.remove('border-transparent', 'text-gray-500');
-      document.getElementById(`new-tab-${period}`).classList.add('border-blue-500', 'text-blue-600');
+      document.getElementById(`new-tab-${period}`).classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+      document.getElementById(`new-tab-${period}`).classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
     }
 
     // Tab switching for Existing Movies
@@ -396,11 +403,11 @@
       
       // Update tab styles
       document.querySelectorAll('[id^="existing-tab-"]').forEach(tab => {
-        tab.classList.remove('border-blue-500', 'text-blue-600');
-        tab.classList.add('border-transparent', 'text-gray-500');
+        tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+        tab.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
       });
-      document.getElementById(`existing-tab-${period}`).classList.remove('border-transparent', 'text-gray-500');
-      document.getElementById(`existing-tab-${period}`).classList.add('border-blue-500', 'text-blue-600');
+      document.getElementById(`existing-tab-${period}`).classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+      document.getElementById(`existing-tab-${period}`).classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
     }
 
     let currentReleaseId = null;

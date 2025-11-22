@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="<%= typeof theme !== 'undefined' && theme === 'dark' ? 'dark' : '' %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings - Radarr Indian Helper</title>
+  <title>Settings — desiarr</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/app.css">
   <style>
     @keyframes slideIn {
       from {
@@ -34,14 +35,17 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-  <%- include('partials/sidebar', { currentPage: 'settings' }) %>
+<body class="bg-[var(--bg)] text-[var(--text)] min-h-screen">
+  <%- include('partials/app-sidebar', { currentPage: 'settings' }) %>
   
-  <main class="ml-64 p-8">
-    <h2 class="text-2xl font-bold mb-6">Settings</h2>
+  <div class="lg:pl-64">
+    <%- include('partials/app-header') %>
+    
+    <main class="p-4 lg:p-6">
+    <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Settings</h2>
 
     <!-- RSS Feeds Section -->
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
       <h3 class="text-xl font-semibold mb-4">RSS Feeds</h3>
       <div class="mb-4">
         <button onclick="showAddFeedModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
@@ -343,7 +347,8 @@
         </button>
       </form>
     </div>
-  </main>
+    </main>
+  </div>
 
   <!-- Add/Edit Feed Modal -->
   <div id="feedModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -795,6 +800,7 @@
       });
     }
   </script>
+  <script src="/js/ui.js"></script>
 </body>
 </html>
 
