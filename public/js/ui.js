@@ -57,6 +57,17 @@
     }
   });
 
+  // Close sidebar on mobile when clicking navigation links
+  document.querySelectorAll('#sidebar nav a').forEach(link => {
+    link.addEventListener('click', () => {
+      // Only close on mobile (screens < 1024px)
+      if (window.innerWidth < 1024) {
+        sidebar?.classList.add('-translate-x-full');
+        sidebarOverlay?.classList.add('hidden');
+      }
+    });
+  });
+
   // Global search keyboard shortcut (Cmd/Ctrl + K)
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
