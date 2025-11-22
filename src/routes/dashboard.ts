@@ -388,11 +388,23 @@ router.get('/', async (req: Request, res: Response) => {
       // Extract IMDB ID from any release in the group
       const imdbIdFromRelease = releases.find(r => r.imdb_id)?.imdb_id;
       
+      // Ensure we use the correct Radarr movie ID (from radarr_movies table if available)
+      let finalRadarrMovieId = radarrMovieId || primaryRelease.radarr_movie_id;
+      
+      // If we have a radarr_movie_id, verify it exists in radarr_movies table to get the correct ID
+      if (finalRadarrMovieId) {
+        const syncedMovie = getSyncedRadarrMovieByRadarrId(finalRadarrMovieId);
+        if (syncedMovie) {
+          // Use the radarr_id from the synced table (this is the actual Radarr movie ID)
+          finalRadarrMovieId = syncedMovie.radarr_id;
+        }
+      }
+      
       movieGroups.push({
         movieKey,
         movieTitle,
         tmdbId: primaryRelease.tmdb_id,
-        radarrMovieId: radarrMovieId || primaryRelease.radarr_movie_id, // Use the detected radarrMovieId
+        radarrMovieId: finalRadarrMovieId, // Use the verified Radarr movie ID
         imdbId: imdbIdFromRelease, // Add IMDB ID from releases
         radarrInfo, // Add Radarr info to the movie group
         add,
@@ -683,8 +695,17 @@ router.get('/', async (req: Request, res: Response) => {
     // Get Radarr base URL for links from settings (not config/env)
     const allSettings = settingsModel.getAll();
     const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value || '';
+    
     // Remove /api/v3 suffix if present to get base URL
-    const radarrBaseUrl = radarrApiUrl ? radarrApiUrl.replace(/\/api\/v3\/?$/, '') : '';
+    // Also handle trailing slashes
+    let radarrBaseUrl = '';
+    if (radarrApiUrl) {
+      radarrBaseUrl = radarrApiUrl.replace(/\/api\/v3\/?$/, '').replace(/\/$/, '');
+      console.log(`[Dashboard] Radarr API URL from settings: ${radarrApiUrl}`);
+      console.log(`[Dashboard] Radarr base URL for links: ${radarrBaseUrl}`);
+    } else {
+      console.warn('[Dashboard] No Radarr API URL found in settings');
+    }
 
     // Get last refresh time (matching engine last run)
     const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;
