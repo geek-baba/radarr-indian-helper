@@ -100,7 +100,11 @@
     <!-- Logs Container -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
       <div id="logsContainer" class="p-4 max-h-[calc(100vh-300px)] overflow-y-auto">
-        <% logs.forEach(log => { %>
+        <% 
+          // Ensure logs are displayed newest first (they should already be reversed from logStorage, but double-check)
+          const sortedLogs = [...logs].reverse();
+          sortedLogs.forEach(log => { 
+        %>
           <div class="log-entry <%= log.level %> mb-1">
             <span class="text-gray-500 text-xs">
               <%= new Date(log.timestamp).toLocaleString() %>

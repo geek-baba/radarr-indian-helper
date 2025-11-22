@@ -190,10 +190,12 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
 
     transaction();
 
-    // Update last sync timestamp
+    // Update last sync timestamp (use current time, not the start time)
+    const syncCompleteTime = new Date();
     db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('radarr_last_sync', ?)").run(
-      stats.lastSyncAt.toISOString()
+      syncCompleteTime.toISOString()
     );
+    stats.lastSyncAt = syncCompleteTime;
 
     syncProgress.update('Sync completed', stats.totalMovies, stats.totalMovies, stats.errors.length);
     syncProgress.complete();

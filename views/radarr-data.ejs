@@ -357,14 +357,18 @@
                 resetButton();
               }, 10000);
             } else {
-              // Success - reload after 2 seconds (only if we were actively polling)
+              // Success - reload after 2 seconds to show updated timestamp (only if we were actively polling)
               if (progressInterval !== null || backgroundPollInterval !== null) {
                 setTimeout(() => {
                   window.location.reload();
                 }, 2000);
               } else {
-                // Sync was already completed before page load, just reset button
+                // Sync was already completed before page load, just reset button and update timestamp
                 resetButton();
+                // Update timestamp display by reloading the page after a short delay
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
               }
             }
           }

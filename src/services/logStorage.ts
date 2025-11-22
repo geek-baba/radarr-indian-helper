@@ -65,10 +65,9 @@ export const logStorage = {
 
   getLogsByFilter: (filter: string, limit: number = 500): LogEntry[] => {
     const lowerFilter = filter.toLowerCase();
-    return logs
-      .filter(log => log.message.toLowerCase().includes(lowerFilter))
-      .slice(-limit)
-      .reverse();
+    // Filter all logs, then take the last N (most recent), then reverse to show newest first
+    const filtered = logs.filter(log => log.message.toLowerCase().includes(lowerFilter));
+    return filtered.slice(-limit).reverse();
   },
 
   clear: (): void => {
