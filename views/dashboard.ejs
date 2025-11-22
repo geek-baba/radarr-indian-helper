@@ -618,12 +618,29 @@
         clearSearchBtn.style.display = 'none';
         clearSearchBtn.classList.add('hidden');
         searchResultsCount.classList.add('hidden');
-        // Show all movie cards
+        // Restore normal tab behavior - show all cards and restore tab visibility
         document.querySelectorAll('.movie-card-container').forEach(card => {
           card.style.display = '';
         });
+        // Restore normal tab sections visibility
+        document.querySelectorAll('.main-section').forEach(section => {
+          section.style.display = '';
+        });
+        document.querySelectorAll('.new-movies-section, .existing-movies-section').forEach(section => {
+          section.style.display = '';
+        });
         return;
       }
+      
+      // When searching, show all main sections and time period sections so matching cards are visible
+      document.querySelectorAll('.main-section').forEach(section => {
+        section.classList.remove('hidden');
+        section.style.display = '';
+      });
+      document.querySelectorAll('.new-movies-section, .existing-movies-section').forEach(section => {
+        section.classList.remove('hidden');
+        section.style.display = '';
+      });
       
       // Get all movie card containers
       const movieCards = document.querySelectorAll('.movie-card-container');
@@ -689,6 +706,22 @@
       document.querySelectorAll('.movie-card-container').forEach(card => {
         card.style.display = '';
       });
+      
+      // Restore normal tab sections visibility (let the tab system handle it)
+      document.querySelectorAll('.main-section').forEach(section => {
+        section.style.display = '';
+      });
+      document.querySelectorAll('.new-movies-section, .existing-movies-section').forEach(section => {
+        section.style.display = '';
+      });
+      
+      // Restore the default tab view by triggering the active tab
+      const activeMainTab = document.querySelector('[id^="main-tab-"].border-blue-500');
+      if (activeMainTab) {
+        const tabId = activeMainTab.id;
+        const sectionKey = tabId.replace('main-tab-', '');
+        showMainSection(sectionKey);
+      }
     }
     
     function handleSearchKeydown(event) {
