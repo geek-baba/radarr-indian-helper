@@ -146,6 +146,7 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
               movieData.movie_file,
               movieData.original_language,
               movieData.images,
+              movieData.date_added, // Added missing date_added parameter
               movieData.synced_at
             );
             stats.synced++;
