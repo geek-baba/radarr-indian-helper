@@ -63,9 +63,7 @@
             </div>
             <div id="progressText" class="text-xs text-gray-600 dark:text-gray-400 mt-1"></div>
           </div>
-          <button onclick="refreshDashboard()" id="refreshButton" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-            Refresh Dashboard
-          </button>
+          <!-- Refresh button removed - using header refresh button instead -->
         </div>
       </div>
 
@@ -612,7 +610,8 @@
 
     // Search functionality
     function filterMovies() {
-      const searchInput = document.getElementById('searchInput');
+      // Support both dashboard search input and global search
+      const searchInput = document.getElementById('searchInput') || document.getElementById('globalSearch');
       const clearSearchBtn = document.getElementById('clearSearchBtn');
       const searchResultsCount = document.getElementById('searchResultsCount');
       const query = searchInput.value.trim().toLowerCase();
@@ -700,7 +699,9 @@
     }
     
     function clearSearch() {
+      // Clear both search inputs
       const searchInput = document.getElementById('searchInput');
+      const globalSearch = document.getElementById('globalSearch');
       const clearSearchBtn = document.getElementById('clearSearchBtn');
       const searchResultsCount = document.getElementById('searchResultsCount');
       

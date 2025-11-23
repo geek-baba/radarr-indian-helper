@@ -77,6 +77,44 @@
     }
   });
 
+  // Connect global search to dashboard search (if on dashboard page)
+  if (search && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
+    // Wait for dashboard scripts to load
+    setTimeout(() => {
+      const dashboardSearch = document.getElementById('searchInput');
+      
+      // Sync global search with dashboard search
+      search.addEventListener('input', (e) => {
+        if (dashboardSearch) {
+          dashboardSearch.value = e.target.value;
+          // Trigger dashboard search if function exists
+          if (typeof window.filterMovies === 'function') {
+            window.filterMovies();
+          }
+        } else {
+          // If dashboard search doesn't exist, trigger search directly
+          // This handles the case where we removed the duplicate search box
+          if (typeof window.filterMovies === 'function') {
+            // Create a temporary search input to trigger filterMovies
+            const tempInput = document.createElement('input');
+            tempInput.id = 'searchInput';
+            tempInput.value = e.target.value;
+            document.body.appendChild(tempInput);
+            window.filterMovies();
+            document.body.removeChild(tempInput);
+          }
+        }
+      });
+
+      // Sync dashboard search with global search (if it exists)
+      if (dashboardSearch) {
+        dashboardSearch.addEventListener('input', (e) => {
+          search.value = e.target.value;
+        });
+      }
+    }, 100);
+  }
+
   // Refresh button functionality
   refreshBtn?.addEventListener('click', () => {
     const path = window.location.pathname;
