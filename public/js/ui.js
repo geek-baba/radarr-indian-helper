@@ -119,7 +119,24 @@
   if (search && window.location.pathname === '/data/radarr') {
     let searchTimeout = null;
     
+    // Show/hide clear button based on search value
+    function updateClearButton() {
+      const clearBtn = document.getElementById('clearGlobalSearch');
+      if (clearBtn) {
+        if (search.value.trim()) {
+          clearBtn.style.display = 'block';
+        } else {
+          clearBtn.style.display = 'none';
+        }
+      }
+    }
+    
+    // Initial check for clear button
+    updateClearButton();
+    
     search.addEventListener('input', (e) => {
+      updateClearButton();
+      
       // Clear existing timeout
       if (searchTimeout) {
         clearTimeout(searchTimeout);
@@ -163,6 +180,16 @@
         window.location.href = url.toString();
       }
     });
+    
+    // Clear search function
+    window.clearGlobalSearch = function() {
+      search.value = '';
+      updateClearButton();
+      const url = new URL(window.location.href);
+      url.searchParams.delete('search');
+      url.searchParams.set('page', '1');
+      window.location.href = url.toString();
+    };
   }
 
   // Refresh button functionality

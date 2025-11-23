@@ -7,13 +7,29 @@
         </svg>
       </button>
 
-      <input 
-        id="globalSearch" 
-        type="search" 
-        placeholder="Search… (⌘K / Ctrl+K)"
-        class="w-72 lg:w-[32rem] rounded-xl border border-[var(--border)] bg-white/70 dark:bg-white/5 px-4 py-2 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-        aria-label="Global search"
-      />
+      <div class="relative flex-1 max-w-2xl">
+        <input 
+          id="globalSearch" 
+          type="search" 
+          placeholder="Search… (⌘K / Ctrl+K)"
+          value="<%= typeof currentSearch !== 'undefined' ? currentSearch : '' %>"
+          class="w-full rounded-xl border border-[var(--border)] bg-white/70 dark:bg-white/5 px-4 py-2 pr-10 focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+          aria-label="Global search"
+        />
+        <% if (typeof currentSearch !== 'undefined' && currentSearch) { %>
+          <button 
+            id="clearGlobalSearch"
+            type="button"
+            onclick="clearGlobalSearch()"
+            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+            aria-label="Clear search"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        <% } %>
+      </div>
     </div>
 
     <div class="flex items-center gap-3">
