@@ -77,46 +77,24 @@
     }
   });
 
-  // Connect global search to dashboard search (if on dashboard page)
-  if (search && (window.location.pathname === '/' || window.location.pathname === '/dashboard')) {
-    // Wait for dashboard scripts to load
-    setTimeout(() => {
-      const dashboardSearch = document.getElementById('searchInput');
-      
-      // Sync global search with dashboard search
-      search.addEventListener('input', (e) => {
-        if (dashboardSearch) {
-          dashboardSearch.value = e.target.value;
+  // Connect global search based on current page
+  if (search) {
+    const path = window.location.pathname;
+    
+    // Dashboard page - filter movies client-side
+    if (path === '/' || path === '/dashboard') {
+      // Wait for dashboard scripts to load
+      setTimeout(() => {
+        search.addEventListener('input', (e) => {
           // Trigger dashboard search if function exists
           if (typeof window.filterMovies === 'function') {
             window.filterMovies();
           }
-        } else {
-          // If dashboard search doesn't exist, trigger search directly
-          // This handles the case where we removed the duplicate search box
-          if (typeof window.filterMovies === 'function') {
-            // Create a temporary search input to trigger filterMovies
-            const tempInput = document.createElement('input');
-            tempInput.id = 'searchInput';
-            tempInput.value = e.target.value;
-            document.body.appendChild(tempInput);
-            window.filterMovies();
-            document.body.removeChild(tempInput);
-          }
-        }
-      });
-
-      // Sync dashboard search with global search (if it exists)
-      if (dashboardSearch) {
-        dashboardSearch.addEventListener('input', (e) => {
-          search.value = e.target.value;
         });
-      }
-    }, 100);
-  }
-
-  // Connect global search to Radarr Data page search
-  if (search && window.location.pathname === '/data/radarr') {
+      }, 100);
+    }
+    // Radarr Data page - URL-based search
+    else if (path === '/data/radarr') {
     let searchTimeout = null;
     
     // Show/hide clear button based on search value
@@ -190,6 +168,88 @@
       url.searchParams.set('page', '1');
       window.location.href = url.toString();
     };
+    }
+    // RSS Data page - filter table client-side
+    else if (path === '/data/rss') {
+      // Wait for RSS page scripts to load
+      setTimeout(() => {
+        search.addEventListener('input', (e) => {
+          // Update the local search input if it exists
+          const rssSearchInput = document.getElementById('searchInput');
+          if (rssSearchInput) {
+            rssSearchInput.value = e.target.value;
+          }
+          // Trigger RSS filter if function exists
+          if (typeof window.filterTable === 'function') {
+            window.filterTable();
+          }
+        });
+      }, 100);
+    }
+    // Logs page - URL-based filter
+    else if (path === '/data/logs' || path === '/data/logs-old') {
+      let searchTimeout = null;
+      
+      search.addEventListener('input', (e) => {
+        // Clear existing timeout
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        
+        // Update local filter input if it exists
+        const logsFilterInput = document.getElementById('filterInput');
+        if (logsFilterInput) {
+          logsFilterInput.value = e.target.value;
+        }
+        
+        // Debounce the search (wait 500ms after user stops typing)
+        searchTimeout = setTimeout(() => {
+          const searchTerm = e.target.value.trim();
+          const url = new URL(window.location.href);
+          
+          if (searchTerm) {
+            url.searchParams.set('filter', searchTerm);
+          } else {
+            url.searchParams.delete('filter');
+          }
+          
+          window.location.href = url.toString();
+        }, 500);
+      });
+
+      // Handle Enter key for immediate search
+      search.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (searchTimeout) {
+            clearTimeout(searchTimeout);
+          }
+          const searchTerm = e.target.value.trim();
+          const url = new URL(window.location.href);
+          
+          if (searchTerm) {
+            url.searchParams.set('filter', searchTerm);
+          } else {
+            url.searchParams.delete('filter');
+          }
+          
+          window.location.href = url.toString();
+        }
+      });
+      
+      // Clear search function for logs
+      window.clearGlobalSearch = function() {
+        search.value = '';
+        const url = new URL(window.location.href);
+        url.searchParams.delete('filter');
+        window.location.href = url.toString();
+      };
+    }
+    // Settings page - no search functionality needed
+    else if (path === '/settings') {
+      // No search functionality on settings page
+      search.style.display = 'none';
+    }
   }
 
   // Refresh button functionality
