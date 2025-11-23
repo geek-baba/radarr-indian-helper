@@ -4,7 +4,7 @@ import db from '../db';
 const router = Router();
 
 interface LogQuery {
-  cursor?: string; // timestamp-based cursor
+  page?: number;
   limit?: number;
   level?: string;
   source?: string;
@@ -15,12 +15,12 @@ interface LogQuery {
   dateTo?: string;
 }
 
-// GET /api/logs - List logs with filtering and cursor pagination
+// GET /api/logs - List logs with filtering and offset pagination
 router.get('/', (req: Request, res: Response) => {
   try {
     const query: LogQuery = {
-      cursor: req.query.cursor as string,
-      limit: Math.min(parseInt(req.query.limit as string) || 100, 500), // Max 500 per page
+      page: Math.max(1, parseInt(req.query.page as string) || 1),
+      limit: Math.min(parseInt(req.query.limit as string) || 50, 200), // Max 200 per page
       level: req.query.level as string,
       source: req.query.source as string,
       search: req.query.search as string,
@@ -31,65 +31,76 @@ router.get('/', (req: Request, res: Response) => {
     };
 
     let sql = 'SELECT * FROM structured_logs WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as total FROM structured_logs WHERE 1=1';
     const params: any[] = [];
-
-    // Cursor-based pagination (timestamp-based)
-    if (query.cursor) {
-      sql += ' AND timestamp < ?';
-      params.push(query.cursor);
-    }
+    const countParams: any[] = [];
 
     // Level filter
     if (query.level) {
       sql += ' AND level = ?';
+      countSql += ' AND level = ?';
       params.push(query.level);
+      countParams.push(query.level);
     } else if (query.hasErrorOnly) {
       sql += ' AND (level = ? OR level = ?)';
+      countSql += ' AND (level = ? OR level = ?)';
       params.push('ERROR', 'WARN');
+      countParams.push('ERROR', 'WARN');
     }
 
     // Source filter
     if (query.source) {
       sql += ' AND source = ?';
+      countSql += ' AND source = ?';
       params.push(query.source);
+      countParams.push(query.source);
     }
 
     // Job ID filter
     if (query.jobId) {
       sql += ' AND job_id = ?';
+      countSql += ' AND job_id = ?';
       params.push(query.jobId);
+      countParams.push(query.jobId);
     }
 
     // Date range filter
     if (query.dateFrom) {
       sql += ' AND timestamp >= ?';
+      countSql += ' AND timestamp >= ?';
       params.push(query.dateFrom);
+      countParams.push(query.dateFrom);
     }
     if (query.dateTo) {
       sql += ' AND timestamp <= ?';
+      countSql += ' AND timestamp <= ?';
       params.push(query.dateTo);
+      countParams.push(query.dateTo);
     }
 
     // Text search (across message, release_title, file_path)
     if (query.search) {
       sql += ' AND (message LIKE ? OR release_title LIKE ? OR file_path LIKE ?)';
+      countSql += ' AND (message LIKE ? OR release_title LIKE ? OR file_path LIKE ?)';
       const searchTerm = `%${query.search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
+      countParams.push(searchTerm, searchTerm, searchTerm);
     }
 
-    // Order by timestamp DESC (newest first)
-    const limit = query.limit || 100;
-    sql += ' ORDER BY timestamp DESC LIMIT ?';
-    params.push(limit + 1); // Fetch one extra to check if there's more
+    // Get total count for pagination
+    const countResult = db.prepare(countSql).get(countParams) as any;
+    const total = countResult?.total || 0;
+
+    // Offset-based pagination
+    const limit = query.limit || 50;
+    const offset = (query.page - 1) * limit;
+    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
 
     const rows = db.prepare(sql).all(params) as any[];
 
-    // Check if there are more results
-    const hasMore = rows.length > limit;
-    const logs = hasMore ? rows.slice(0, limit) : rows;
-
     // Parse JSON details
-    const processedLogs = logs.map(log => ({
+    const processedLogs = rows.map(log => ({
       id: log.id,
       timestamp: log.timestamp,
       level: log.level,
@@ -102,16 +113,18 @@ router.get('/', (req: Request, res: Response) => {
       errorStack: log.error_stack,
     }));
 
-    // Get next cursor (timestamp of last item)
-    const nextCursor = hasMore && processedLogs.length > 0 
-      ? processedLogs[processedLogs.length - 1].timestamp 
-      : null;
+    const totalPages = Math.ceil(total / limit);
 
     res.json({
       success: true,
       logs: processedLogs,
-      hasMore,
-      nextCursor,
+      pagination: {
+        page: query.page,
+        limit,
+        total,
+        totalPages,
+        hasMore: query.page < totalPages,
+      },
       count: processedLogs.length,
     });
   } catch (error: any) {
