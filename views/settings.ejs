@@ -45,7 +45,41 @@
     <main class="p-4 lg:p-6">
     <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Settings</h2>
 
+    <!-- Tab Navigation -->
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+      <nav class="flex space-x-1" role="tablist">
+        <button
+          id="tab-rss"
+          onclick="switchTab('rss')"
+          class="tab-button active px-6 py-3 text-sm font-medium rounded-t-lg transition-all duration-200 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
+          role="tab"
+          aria-selected="true"
+        >
+          RSS Feeds
+        </button>
+        <button
+          id="tab-api"
+          onclick="switchTab('api')"
+          class="tab-button px-6 py-3 text-sm font-medium rounded-t-lg transition-all duration-200 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          role="tab"
+          aria-selected="false"
+        >
+          API Configuration
+        </button>
+        <button
+          id="tab-quality"
+          onclick="switchTab('quality')"
+          class="tab-button px-6 py-3 text-sm font-medium rounded-t-lg transition-all duration-200 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+          role="tab"
+          aria-selected="false"
+        >
+          Quality Settings
+        </button>
+      </nav>
+    </div>
+
     <!-- RSS Feeds Section -->
+    <div id="section-rss" class="tab-content">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
       <h3 class="text-xl font-semibold mb-4">RSS Feeds</h3>
       <div class="mb-4">
@@ -83,9 +117,11 @@
         </table>
       </div>
     </div>
+    </div>
 
     <!-- API Configuration Section -->
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div id="section-api" class="tab-content hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
       <h3 class="text-xl font-semibold mb-4">API Configuration</h3>
       
       <div class="bg-purple-50 border border-purple-200 rounded p-4 mb-4">
@@ -189,24 +225,11 @@
         </form>
       </div>
     </div>
-
-    <!-- Maintenance Section -->
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
-      <h3 class="text-xl font-semibold mb-4">Maintenance</h3>
-      <p class="text-sm text-gray-700 mb-4">
-        Backfill Radarr links for any releases that already have TMDB IDs but were imported before Radarr matching existed.
-        This is useful when older items (like <em>Ujda Chaman</em>) still show an "Add" action even though they exist in Radarr.
-      </p>
-      <div class="flex items-center gap-4">
-        <button id="backfillRadarrButton" onclick="runBackfillRadarr()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
-          Backfill Radarr Links
-        </button>
-        <span id="backfillRadarrStatus" class="text-sm text-gray-600"></span>
-      </div>
     </div>
 
     <!-- Quality Settings Section -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div id="section-quality" class="tab-content hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h3 class="text-xl font-semibold mb-4">Quality Settings</h3>
       <form id="qualityForm" onsubmit="saveQualitySettings(event)">
         <!-- Resolution Rules -->
