@@ -115,6 +115,56 @@
     }, 100);
   }
 
+  // Connect global search to Radarr Data page search
+  if (search && window.location.pathname === '/data/radarr') {
+    let searchTimeout = null;
+    
+    search.addEventListener('input', (e) => {
+      // Clear existing timeout
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      // Debounce the search (wait 500ms after user stops typing)
+      searchTimeout = setTimeout(() => {
+        const searchTerm = e.target.value.trim();
+        const url = new URL(window.location.href);
+        
+        if (searchTerm) {
+          url.searchParams.set('search', searchTerm);
+          url.searchParams.set('page', '1'); // Reset to first page on search
+        } else {
+          url.searchParams.delete('search');
+          url.searchParams.set('page', '1');
+        }
+        
+        window.location.href = url.toString();
+      }, 500);
+    });
+
+    // Handle Enter key for immediate search
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        const searchTerm = e.target.value.trim();
+        const url = new URL(window.location.href);
+        
+        if (searchTerm) {
+          url.searchParams.set('search', searchTerm);
+          url.searchParams.set('page', '1');
+        } else {
+          url.searchParams.delete('search');
+          url.searchParams.set('page', '1');
+        }
+        
+        window.location.href = url.toString();
+      }
+    });
+  }
+
   // Refresh button functionality
   refreshBtn?.addEventListener('click', () => {
     const path = window.location.pathname;

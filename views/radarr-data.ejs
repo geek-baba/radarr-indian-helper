@@ -17,8 +17,7 @@
     <div class="mb-6">
       <div class="flex justify-between items-center mb-4">
         <div>
-          <h2 class="text-2xl font-bold">Radarr Movies</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
             Last synced: <%= lastSync ? new Date(lastSync).toLocaleString() : 'Never' %>
           </p>
         </div>
@@ -59,29 +58,7 @@
       </div>
     </div>
 
-    <!-- Search Bar -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-      <div class="flex items-center gap-4">
-        <label for="searchInput" class="text-sm font-medium text-gray-700 dark:text-gray-300">Search:</label>
-        <input 
-          type="text" 
-          id="searchInput" 
-          placeholder="Search by title, year, TMDB ID, or IMDB ID..." 
-          class="flex-1 border border-gray-300 dark:border-gray-600 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          value="<%= search || '' %>"
-          onkeyup="handleSearchInput(event)"
-        />
-        <% if (search) { %>
-          <button 
-            type="button"
-            onclick="clearSearch()" 
-            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm"
-          >
-            Clear
-          </button>
-        <% } %>
-      </div>
-    </div>
+    <!-- Search Bar removed - using header global search instead -->
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <div class="overflow-x-auto">
