@@ -18,9 +18,12 @@ interface LogQuery {
 // GET /api/logs - List logs with filtering and offset pagination
 router.get('/', (req: Request, res: Response) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200); // Max 200 per page
+    
     const query: LogQuery = {
-      page: Math.max(1, parseInt(req.query.page as string) || 1),
-      limit: Math.min(parseInt(req.query.limit as string) || 50, 200), // Max 200 per page
+      page,
+      limit,
       level: req.query.level as string,
       source: req.query.source as string,
       search: req.query.search as string,
@@ -92,10 +95,11 @@ router.get('/', (req: Request, res: Response) => {
     const total = countResult?.total || 0;
 
     // Offset-based pagination
-    const limit = query.limit || 50;
-    const offset = (query.page - 1) * limit;
+    const pageLimit = query.limit || 50;
+    const currentPage = query.page || 1;
+    const offset = (currentPage - 1) * pageLimit;
     sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    params.push(pageLimit, offset);
 
     const rows = db.prepare(sql).all(params) as any[];
 
@@ -113,17 +117,17 @@ router.get('/', (req: Request, res: Response) => {
       errorStack: log.error_stack,
     }));
 
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(total / pageLimit);
 
     res.json({
       success: true,
       logs: processedLogs,
       pagination: {
-        page: query.page,
-        limit,
+        page: currentPage,
+        limit: pageLimit,
         total,
         totalPages,
-        hasMore: query.page < totalPages,
+        hasMore: currentPage < totalPages,
       },
       count: processedLogs.length,
     });
