@@ -908,7 +908,7 @@
       }
 
       function updateProgress() {
-        fetch('/dashboard/build-match/progress')
+        fetch('/build-match/progress')
           .then(res => {
             if (!res.ok) {
               throw new Error(`HTTP error! status: ${res.status}`);
@@ -1019,7 +1019,7 @@
         syncProgressText.textContent = 'Initializing sync...';
 
         // Start sync
-        fetch('/dashboard/build-match', { method: 'POST' })
+        fetch('/build-match', { method: 'POST' })
           .then(res => {
             if (!res.ok) {
               throw new Error(`HTTP error! status: ${res.status}`);
