@@ -643,19 +643,15 @@
     // Search functionality
     // Define and expose filterMovies to window immediately
     function filterMovies() {
-      console.log('filterMovies called');
       // Use global search from header
       const searchInput = document.getElementById('globalSearch');
       if (!searchInput) {
-        console.error('globalSearch element not found');
         return;
       }
       
       const clearSearchBtn = document.getElementById('clearSearchBtn');
       const searchResultsCount = document.getElementById('searchResultsCount');
       const query = searchInput.value.trim().toLowerCase();
-      
-      console.log('Search query:', query);
       
       // Show/hide clear button
       if (query.length > 0) {
@@ -701,7 +697,6 @@
       
       // Get all movie card containers
       const movieCards = document.querySelectorAll('article.card[data-movie-id]');
-      console.log('Found movie cards:', movieCards.length);
       let visibleCount = 0;
       
       movieCards.forEach(card => {
@@ -741,8 +736,6 @@
           card.style.display = 'none';
         }
       });
-      
-      console.log('Visible cards:', visibleCount);
       
       // Update search results count
       if (searchResultsCount) {

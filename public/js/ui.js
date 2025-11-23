@@ -117,8 +117,6 @@
                 } catch (error) {
                   console.error('Error calling filterMovies (delayed):', error);
                 }
-              } else {
-                console.warn('filterMovies function not available after delay');
               }
             }, 100);
           }
@@ -128,8 +126,6 @@
         globalSearch.addEventListener('input', triggerFilter);
         globalSearch.addEventListener('keyup', triggerFilter);
         globalSearch.addEventListener('change', triggerFilter);
-        
-        console.log('Dashboard search listeners attached to:', globalSearch);
       }
       
       // Try multiple times
