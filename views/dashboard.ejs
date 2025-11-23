@@ -643,46 +643,65 @@
     // Search functionality
     // Define and expose filterMovies to window immediately
     function filterMovies() {
+      console.log('filterMovies called');
       // Use global search from header
       const searchInput = document.getElementById('globalSearch');
+      if (!searchInput) {
+        console.error('globalSearch element not found');
+        return;
+      }
+      
       const clearSearchBtn = document.getElementById('clearSearchBtn');
       const searchResultsCount = document.getElementById('searchResultsCount');
       const query = searchInput.value.trim().toLowerCase();
       
+      console.log('Search query:', query);
+      
       // Show/hide clear button
       if (query.length > 0) {
-        clearSearchBtn.style.display = 'block';
-        clearSearchBtn.classList.remove('hidden');
+        if (clearSearchBtn) {
+          clearSearchBtn.style.display = 'block';
+          clearSearchBtn.classList.remove('hidden');
+        }
       } else {
-        clearSearchBtn.style.display = 'none';
-        clearSearchBtn.classList.add('hidden');
-        searchResultsCount.classList.add('hidden');
+        if (clearSearchBtn) {
+          clearSearchBtn.style.display = 'none';
+          clearSearchBtn.classList.add('hidden');
+        }
+        if (searchResultsCount) {
+          searchResultsCount.classList.add('hidden');
+        }
         // Restore normal tab behavior - show all cards and restore tab visibility
         document.querySelectorAll('article.card[data-movie-id]').forEach(card => {
           card.style.display = '';
+          card.classList.remove('hidden');
         });
         // Restore normal tab sections visibility
         document.querySelectorAll('.main-section').forEach(section => {
+          section.classList.remove('hidden');
           section.style.display = '';
         });
         document.querySelectorAll('.new-movies-section, .existing-movies-section').forEach(section => {
+          section.classList.remove('hidden');
           section.style.display = '';
         });
         return;
       }
       
       // When searching, show all main sections and time period sections so matching cards are visible
+      // IMPORTANT: Remove hidden class AND set display to ensure visibility
       document.querySelectorAll('.main-section').forEach(section => {
         section.classList.remove('hidden');
-        section.style.display = '';
+        section.style.display = 'block';
       });
       document.querySelectorAll('.new-movies-section, .existing-movies-section').forEach(section => {
         section.classList.remove('hidden');
-        section.style.display = '';
+        section.style.display = 'block';
       });
       
       // Get all movie card containers
       const movieCards = document.querySelectorAll('article.card[data-movie-id]');
+      console.log('Found movie cards:', movieCards.length);
       let visibleCount = 0;
       
       movieCards.forEach(card => {
@@ -712,12 +731,18 @@
         const matches = movieTitle.includes(query) || hasMatchingRelease || cardText.includes(query);
         
         if (matches) {
-          card.style.display = '';
+          // Show card - remove hidden class AND set display
+          card.classList.remove('hidden');
+          card.style.display = 'block';
           visibleCount++;
         } else {
+          // Hide card
+          card.classList.add('hidden');
           card.style.display = 'none';
         }
       });
+      
+      console.log('Visible cards:', visibleCount);
       
       // Update search results count
       if (searchResultsCount) {
