@@ -166,9 +166,9 @@
         <!-- Existing Movies Section -->
         <% if (hasExistingMovies) { %>
           <div id="main-section-existing" class="main-section <%= firstVisibleTab === 1 ? '' : 'hidden' %>">
-            <!-- Time Period Tabs for Existing Movies -->
-            <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
-              <nav class="flex space-x-8" aria-label="Time Periods">
+            <!-- Time Period Tabs for Existing Movies - Modern Design -->
+            <div class="mb-4">
+              <nav class="flex gap-2" aria-label="Time Periods">
                 <% const existingPeriods = [
                   { key: 'today', label: 'Today', count: existingMoviesByPeriod.today?.length || 0 },
                   { key: 'yesterday', label: 'Yesterday', count: existingMoviesByPeriod.yesterday?.length || 0 },
@@ -187,9 +187,18 @@
                     <button 
                       onclick="showExistingMoviesPeriod('<%= period.key %>')" 
                       id="existing-tab-<%= period.key %>"
-                      class="<%= index === firstExistingIndex ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600' %> py-2 px-1 border-b-2 font-medium text-sm"
+                      class="<%= index === firstExistingIndex 
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700' 
+                        : 'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 border-2 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-200 dark:hover:border-gray-600' %> 
+                        px-3 py-1.5 rounded-md font-medium text-xs transition-all duration-200 flex items-center gap-1.5"
                     >
-                      <%= period.label %> (<%= period.count %>)
+                      <span><%= period.label %></span>
+                      <span class="<%= index === firstExistingIndex 
+                        ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200' 
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' %> 
+                        px-1.5 py-0.5 rounded-full text-xs font-semibold min-w-[1.5rem] text-center">
+                        <%= period.count %>
+                      </span>
                     </button>
                   <% } %>
                 <% }); %>
