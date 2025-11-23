@@ -83,54 +83,48 @@
     
     // Dashboard page - filter movies client-side
     if (path === '/' || path === '/dashboard') {
-      // Use a more robust approach - check multiple times and use event delegation
-      let retryCount = 0;
-      const maxRetries = 20; // Try for up to 2 seconds
-      
-      function connectDashboardSearch() {
+      // Use a simpler, more direct approach
+      function attachDashboardSearch() {
         const globalSearch = document.getElementById('globalSearch');
-        if (globalSearch) {
-          // Remove any existing listeners by cloning the element
-          const newSearch = globalSearch.cloneNode(true);
-          globalSearch.parentNode.replaceChild(newSearch, globalSearch);
-          const freshSearch = document.getElementById('globalSearch');
-          
-          if (typeof window.filterMovies === 'function') {
-            // Add input event listener
-            freshSearch.addEventListener('input', function() {
-              console.log('Dashboard search input triggered:', this.value);
-              window.filterMovies();
-            });
-            
-            // Also trigger on keyup for immediate feedback
-            freshSearch.addEventListener('keyup', function() {
-              console.log('Dashboard search keyup triggered:', this.value);
-              window.filterMovies();
-            });
-            
-            console.log('Dashboard search connected successfully');
-          } else {
-            retryCount++;
-            if (retryCount < maxRetries) {
-              setTimeout(connectDashboardSearch, 100);
-            } else {
-              console.warn('Dashboard filterMovies function not found after', maxRetries, 'retries');
-            }
-          }
-        } else {
-          retryCount++;
-          if (retryCount < maxRetries) {
-            setTimeout(connectDashboardSearch, 100);
-          }
+        if (!globalSearch) {
+          setTimeout(attachDashboardSearch, 50);
+          return;
         }
+        
+        // Check if filterMovies exists, if not, attach a listener that will check on each event
+        globalSearch.addEventListener('input', function() {
+          if (typeof window.filterMovies === 'function') {
+            window.filterMovies();
+          } else {
+            console.warn('filterMovies not available, retrying...');
+            // Try again after a short delay
+            setTimeout(() => {
+              if (typeof window.filterMovies === 'function') {
+                window.filterMovies();
+              }
+            }, 100);
+          }
+        });
+        
+        globalSearch.addEventListener('keyup', function() {
+          if (typeof window.filterMovies === 'function') {
+            window.filterMovies();
+          }
+        });
+        
+        console.log('Dashboard search listeners attached');
       }
       
-      // Start connecting - try immediately and also on load
-      connectDashboardSearch();
+      // Try multiple times to ensure connection
+      attachDashboardSearch();
+      setTimeout(attachDashboardSearch, 100);
+      setTimeout(attachDashboardSearch, 300);
+      setTimeout(attachDashboardSearch, 500);
+      
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', connectDashboardSearch);
+        document.addEventListener('DOMContentLoaded', attachDashboardSearch);
       }
-      window.addEventListener('load', connectDashboardSearch);
+      window.addEventListener('load', attachDashboardSearch);
     }
     // Radarr Data page - URL-based search
     else if (path === '/data/radarr') {
