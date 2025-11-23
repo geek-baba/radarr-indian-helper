@@ -338,13 +338,29 @@
       // Show selected section
       document.getElementById(`main-section-${section}`).classList.remove('hidden');
       
-      // Update tab styles
+      // Update tab styles - Modern design with background colors
       document.querySelectorAll('[id^="main-tab-"]').forEach(tab => {
-        tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-        tab.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+        tab.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+        tab.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+        
+        // Update badge styles
+        const badge = tab.querySelector('span:last-child');
+        if (badge) {
+          badge.classList.remove('bg-blue-500', 'text-white');
+          badge.classList.add('bg-gray-300', 'dark:bg-gray-600', 'text-gray-700', 'dark:text-gray-300');
+        }
       });
-      document.getElementById(`main-tab-${section}`).classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-      document.getElementById(`main-tab-${section}`).classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+      
+      const activeTab = document.getElementById(`main-tab-${section}`);
+      activeTab.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+      activeTab.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+      
+      // Update active badge
+      const activeBadge = activeTab.querySelector('span:last-child');
+      if (activeBadge) {
+        activeBadge.classList.remove('bg-gray-300', 'dark:bg-gray-600', 'text-gray-700', 'dark:text-gray-300');
+        activeBadge.classList.add('bg-blue-500', 'text-white');
+      }
     }
 
     // Tab switching for New Movies
@@ -356,13 +372,29 @@
       // Show selected section
       document.getElementById(`new-period-${period}`).classList.remove('hidden');
       
-      // Update tab styles
+      // Update tab styles - Modern design with background colors
       document.querySelectorAll('[id^="new-tab-"]').forEach(tab => {
-        tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-        tab.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+        tab.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300', 'border-2', 'border-blue-300', 'dark:border-blue-700');
+        tab.classList.add('bg-gray-50', 'dark:bg-gray-800/50', 'text-gray-600', 'dark:text-gray-400', 'border-transparent');
+        
+        // Update badge styles
+        const badge = tab.querySelector('span:last-child');
+        if (badge) {
+          badge.classList.remove('bg-blue-200', 'dark:bg-blue-800', 'text-blue-800', 'dark:text-blue-200');
+          badge.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-400');
+        }
       });
-      document.getElementById(`new-tab-${period}`).classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-      document.getElementById(`new-tab-${period}`).classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+      
+      const activeTab = document.getElementById(`new-tab-${period}`);
+      activeTab.classList.remove('bg-gray-50', 'dark:bg-gray-800/50', 'text-gray-600', 'dark:text-gray-400', 'border-transparent');
+      activeTab.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300', 'border-2', 'border-blue-300', 'dark:border-blue-700');
+      
+      // Update active badge
+      const activeBadge = activeTab.querySelector('span:last-child');
+      if (activeBadge) {
+        activeBadge.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-400');
+        activeBadge.classList.add('bg-blue-200', 'dark:bg-blue-800', 'text-blue-800', 'dark:text-blue-200');
+      }
     }
 
     // Tab switching for Existing Movies
@@ -374,13 +406,29 @@
       // Show selected section
       document.getElementById(`existing-period-${period}`).classList.remove('hidden');
       
-      // Update tab styles
+      // Update tab styles - Modern design with background colors
       document.querySelectorAll('[id^="existing-tab-"]').forEach(tab => {
-        tab.classList.remove('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-        tab.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+        tab.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300', 'border-2', 'border-blue-300', 'dark:border-blue-700');
+        tab.classList.add('bg-gray-50', 'dark:bg-gray-800/50', 'text-gray-600', 'dark:text-gray-400', 'border-transparent');
+        
+        // Update badge styles
+        const badge = tab.querySelector('span:last-child');
+        if (badge) {
+          badge.classList.remove('bg-blue-200', 'dark:bg-blue-800', 'text-blue-800', 'dark:text-blue-200');
+          badge.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-400');
+        }
       });
-      document.getElementById(`existing-tab-${period}`).classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-      document.getElementById(`existing-tab-${period}`).classList.add('border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+      
+      const activeTab = document.getElementById(`existing-tab-${period}`);
+      activeTab.classList.remove('bg-gray-50', 'dark:bg-gray-800/50', 'text-gray-600', 'dark:text-gray-400', 'border-transparent');
+      activeTab.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300', 'border-2', 'border-blue-300', 'dark:border-blue-700');
+      
+      // Update active badge
+      const activeBadge = activeTab.querySelector('span:last-child');
+      if (activeBadge) {
+        activeBadge.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-400');
+        activeBadge.classList.add('bg-blue-200', 'dark:bg-blue-800', 'text-blue-800', 'dark:text-blue-200');
+      }
     }
 
     let currentReleaseId = null;
