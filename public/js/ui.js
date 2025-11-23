@@ -83,15 +83,31 @@
     
     // Dashboard page - filter movies client-side
     if (path === '/' || path === '/dashboard') {
-      // Wait for dashboard scripts to load
-      setTimeout(() => {
-        search.addEventListener('input', (e) => {
-          // Trigger dashboard search if function exists
-          if (typeof window.filterMovies === 'function') {
+      // Wait for dashboard scripts to load, then connect search
+      function connectDashboardSearch() {
+        const globalSearch = document.getElementById('globalSearch');
+        if (globalSearch && typeof window.filterMovies === 'function') {
+          // Add input event listener
+          globalSearch.addEventListener('input', () => {
             window.filterMovies();
-          }
-        });
-      }, 100);
+          });
+          
+          // Also trigger on keyup for immediate feedback
+          globalSearch.addEventListener('keyup', () => {
+            window.filterMovies();
+          });
+        } else {
+          // If function not ready yet, try again
+          setTimeout(connectDashboardSearch, 100);
+        }
+      }
+      
+      // Start connecting after a short delay to ensure dashboard scripts are loaded
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', connectDashboardSearch);
+      } else {
+        setTimeout(connectDashboardSearch, 200);
+      }
     }
     // Radarr Data page - URL-based search
     else if (path === '/data/radarr') {
@@ -186,9 +202,21 @@
         });
       }, 100);
     }
-    // Logs page - URL-based filter
+    // Logs page - URL-based filter (both old and new routes)
     else if (path === '/data/logs' || path === '/data/logs-old') {
       let searchTimeout = null;
+      
+      // Populate search from URL on page load
+      const urlParams = new URLSearchParams(window.location.search);
+      const filterParam = urlParams.get('filter');
+      if (filterParam && search) {
+        search.value = filterParam;
+        // Also update local filter input if it exists
+        const logsFilterInput = document.getElementById('filterInput');
+        if (logsFilterInput) {
+          logsFilterInput.value = filterParam;
+        }
+      }
       
       search.addEventListener('input', (e) => {
         // Clear existing timeout
@@ -239,7 +267,13 @@
       
       // Clear search function for logs
       window.clearGlobalSearch = function() {
-        search.value = '';
+        if (search) {
+          search.value = '';
+        }
+        const logsFilterInput = document.getElementById('filterInput');
+        if (logsFilterInput) {
+          logsFilterInput.value = '';
+        }
         const url = new URL(window.location.href);
         url.searchParams.delete('filter');
         window.location.href = url.toString();
