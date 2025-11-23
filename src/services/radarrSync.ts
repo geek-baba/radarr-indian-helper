@@ -57,6 +57,9 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
     
     syncProgress.update('Processing movies...', 0, movies.length);
 
+    // Track new movies for progress details
+    const newMovies: string[] = [];
+
     // Use transaction for better performance
     const transaction = db.transaction(() => {
       let processed = 0;
@@ -150,6 +153,11 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
               movieData.synced_at
             );
             stats.synced++;
+            // Track new movies (limit to first 5 for display)
+            if (newMovies.length < 5) {
+              const displayTitle = movie.title || 'Unknown';
+              newMovies.push(displayTitle);
+            }
           }
         } catch (error: any) {
           // Build detailed error message
@@ -198,7 +206,28 @@ export async function syncRadarrMovies(): Promise<RadarrSyncStats> {
     );
     stats.lastSyncAt = syncCompleteTime;
 
-    syncProgress.update('Sync completed', stats.totalMovies, stats.totalMovies, stats.errors.length);
+    // Build progress details
+    const details: string[] = [];
+    if (stats.synced > 0) {
+      if (newMovies.length > 0) {
+        const moviesList = newMovies.join(', ');
+        const moreText = stats.synced > newMovies.length ? ` (+${stats.synced - newMovies.length} more)` : '';
+        details.push(`${stats.synced} new movie${stats.synced > 1 ? 's' : ''}: ${moviesList}${moreText}`);
+      } else {
+        details.push(`${stats.synced} new movie${stats.synced > 1 ? 's' : ''} synced`);
+      }
+    }
+    if (stats.updated > 0) {
+      details.push(`${stats.updated} movie${stats.updated > 1 ? 's' : ''} updated`);
+    }
+    
+    syncProgress.update(
+      'Radarr sync completed', 
+      stats.totalMovies, 
+      stats.totalMovies, 
+      stats.errors.length,
+      details.length > 0 ? details : undefined
+    );
     syncProgress.complete();
     
     console.log(`Radarr sync completed: ${stats.synced} new, ${stats.updated} updated, ${stats.errors.length} errors`);

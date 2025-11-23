@@ -9,6 +9,7 @@ interface SyncProgress {
   errors: number;
   startTime?: Date;
   endTime?: Date;
+  details?: string[]; // Array of detail messages (e.g., "3 new movies: Movie A, Movie B, Movie C")
 }
 
 let currentProgress: SyncProgress | null = null;
@@ -24,10 +25,11 @@ export const syncProgress = {
       processed: 0,
       errors: 0,
       startTime: new Date(),
+      details: [],
     };
   },
 
-  update: (step: string, processed: number, total?: number, errors: number = 0) => {
+  update: (step: string, processed: number, total?: number, errors: number = 0, details?: string[]) => {
     if (currentProgress) {
       currentProgress.currentStep = step;
       currentProgress.processed = processed;
@@ -37,6 +39,9 @@ export const syncProgress = {
       }
       if (currentProgress.total > 0) {
         currentProgress.progress = Math.round((processed / currentProgress.total) * 100);
+      }
+      if (details) {
+        currentProgress.details = details;
       }
     }
   },

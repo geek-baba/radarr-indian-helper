@@ -380,6 +380,9 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
           }
         }
 
+        // Track new items for progress details
+        const newItems: string[] = [];
+        
         // Use transaction for better performance
         const transaction = db.transaction(() => {
           for (const { parsed, tmdbId, imdbId, originalItem, guid } of enrichedItems) {
@@ -495,6 +498,11 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
                   itemData.synced_at
                 );
                 stats.itemsSynced++;
+                // Track new items (limit to first 5 for display)
+                if (newItems.length < 5) {
+                  const displayTitle = itemData.clean_title || itemData.title || 'Unknown';
+                  newItems.push(displayTitle);
+                }
               }
             } catch (itemError: any) {
               console.error(`Error processing RSS item: ${parsed.title || parsed.link}`, itemError);
@@ -506,7 +514,30 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
         transaction();
         stats.feedsProcessed++;
         console.log(`Feed ${feed.name}: Synced ${feedData.items.length} items`);
-        syncProgress.update(`Completed ${feed.name} (${feedData.items.length} items)`, feedIndex + 1, feeds.length, stats.errors.length);
+        
+        // Build progress details
+        const details: string[] = [];
+        if (stats.itemsSynced > 0) {
+          const newCount = stats.itemsSynced;
+          if (newItems.length > 0) {
+            const itemsList = newItems.join(', ');
+            const moreText = newCount > newItems.length ? ` (+${newCount - newItems.length} more)` : '';
+            details.push(`${newCount} new item${newCount > 1 ? 's' : ''}: ${itemsList}${moreText}`);
+          } else {
+            details.push(`${newCount} new item${newCount > 1 ? 's' : ''} synced`);
+          }
+        }
+        if (stats.itemsUpdated > 0) {
+          details.push(`${stats.itemsUpdated} item${stats.itemsUpdated > 1 ? 's' : ''} updated`);
+        }
+        
+        syncProgress.update(
+          `Completed ${feed.name} (${feedData.items.length} items)`, 
+          feedIndex + 1, 
+          feeds.length, 
+          stats.errors.length,
+          details.length > 0 ? details : undefined
+        );
       } catch (feedError: any) {
         stats.errors.push({
           feedId: feed.id!,
@@ -525,8 +556,23 @@ export async function syncRssFeeds(): Promise<RssSyncStats> {
 
     console.log(`RSS sync completed: ${stats.feedsProcessed}/${stats.totalFeeds} feeds, ${stats.itemsSynced} new items, ${stats.itemsUpdated} updated items, ${stats.errors.length} errors`);
     
+    // Build final summary details
+    const finalDetails: string[] = [];
+    if (stats.itemsSynced > 0) {
+      finalDetails.push(`${stats.itemsSynced} new item${stats.itemsSynced > 1 ? 's' : ''} synced`);
+    }
+    if (stats.itemsUpdated > 0) {
+      finalDetails.push(`${stats.itemsUpdated} item${stats.itemsUpdated > 1 ? 's' : ''} updated`);
+    }
+    
     // Mark sync as complete
-    syncProgress.update('Sync completed', stats.feedsProcessed, stats.totalFeeds, stats.errors.length);
+    syncProgress.update(
+      'RSS sync completed', 
+      stats.feedsProcessed, 
+      stats.totalFeeds, 
+      stats.errors.length,
+      finalDetails.length > 0 ? finalDetails : undefined
+    );
     syncProgress.complete();
     
     return stats;
