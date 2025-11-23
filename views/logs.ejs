@@ -46,7 +46,10 @@
 <body class="bg-gray-100 min-h-screen">
   <%- include('partials/app-sidebar', { currentPage: 'logs' }) %>
   
-  <main class="ml-64 p-8">
+  <div class="lg:pl-64">
+    <%- include('partials/app-header', { currentSearch: typeof filter !== 'undefined' ? filter : '' }) %>
+    
+  <main class="p-4 lg:p-6">
     <div class="mb-6">
       <div class="flex justify-between items-center mb-4">
         <div>
@@ -251,6 +254,8 @@
       container.scrollTop = container.scrollHeight;
     });
   </script>
+  </main>
+  </div>
 </body>
 </html>
 
