@@ -21,9 +21,15 @@ router.get('/', async (req: Request, res: Response) => {
     const braveApiKey = allSettings.find(s => s.key === 'brave_api_key')?.value || '';
     const radarrApiUrl = allSettings.find(s => s.key === 'radarr_api_url')?.value || '';
     const radarrApiKey = allSettings.find(s => s.key === 'radarr_api_key')?.value || '';
+    const sonarrApiUrl = allSettings.find(s => s.key === 'sonarr_api_url')?.value || '';
+    const sonarrApiKey = allSettings.find(s => s.key === 'sonarr_api_key')?.value || '';
+    const tvdbApiKey = allSettings.find(s => s.key === 'tvdb_api_key')?.value || '';
+    const tvdbUserPin = allSettings.find(s => s.key === 'tvdb_user_pin')?.value || '';
     
     console.log('Radarr URL found:', radarrApiUrl ? 'Yes' : 'No');
     console.log('Radarr Key found:', radarrApiKey ? 'Yes' : 'No');
+    console.log('Sonarr URL found:', sonarrApiUrl ? 'Yes' : 'No');
+    console.log('Sonarr Key found:', sonarrApiKey ? 'Yes' : 'No');
     console.log('Database path:', process.env.DB_PATH || './data/app.db');
 
     res.render('settings', {
@@ -34,6 +40,10 @@ router.get('/', async (req: Request, res: Response) => {
       braveApiKey,
       radarrApiUrl,
       radarrApiKey,
+      sonarrApiUrl,
+      sonarrApiKey,
+      tvdbApiKey,
+      tvdbUserPin,
     });
   } catch (error) {
     console.error('Settings page error:', error);
@@ -416,6 +426,78 @@ router.post('/radarr-config', async (req: Request, res: Response) => {
     console.error('Save Radarr config error:', error);
     console.error('Error stack:', error?.stack);
     res.status(500).json({ success: false, error: 'Failed to save Radarr configuration: ' + (error?.message || 'Unknown error') });
+  }
+});
+
+router.post('/sonarr-config', async (req: Request, res: Response) => {
+  console.log('=== POST /settings/sonarr-config RECEIVED ===');
+  try {
+    const { apiUrl, apiKey } = req.body;
+
+    if (!apiUrl || !apiKey) {
+      return res.status(400).json({ success: false, error: 'Sonarr API URL and Key are required' });
+    }
+
+    const trimmedUrl = apiUrl.trim();
+    const trimmedKey = apiKey.trim();
+
+    try {
+      new URL(trimmedUrl);
+    } catch (error) {
+      console.error('Sonarr config validation failed: Invalid URL format', trimmedUrl);
+      return res.status(400).json({ success: false, error: 'Invalid Sonarr API URL format' });
+    }
+
+    settingsModel.set('sonarr_api_url', trimmedUrl);
+    settingsModel.set('sonarr_api_key', trimmedKey);
+
+    const allSettings = settingsModel.getAll();
+    const savedUrl = allSettings.find(s => s.key === 'sonarr_api_url')?.value;
+    const savedKey = allSettings.find(s => s.key === 'sonarr_api_key')?.value;
+
+    if (!savedUrl || !savedKey || savedUrl !== trimmedUrl || savedKey !== trimmedKey) {
+      return res.status(500).json({ success: false, error: 'Sonarr configuration was not saved correctly. Please try again.' });
+    }
+
+    const sonarrClient = (await import('../sonarr/client')).default;
+    sonarrClient.updateConfig();
+
+    res.json({ success: true, message: 'Sonarr configuration saved successfully' });
+  } catch (error: any) {
+    console.error('Save Sonarr config error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to save Sonarr configuration: ' + (error?.message || 'Unknown error') });
+  }
+});
+
+router.post('/tvdb-config', async (req: Request, res: Response) => {
+  try {
+    const { apiKey, userPin } = req.body;
+
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: 'TVDB API key is required' });
+    }
+
+    const trimmedKey = apiKey.trim();
+    const trimmedPin = (userPin || '').trim();
+
+    settingsModel.set('tvdb_api_key', trimmedKey);
+    settingsModel.set('tvdb_user_pin', trimmedPin);
+
+    const allSettings = settingsModel.getAll();
+    const savedKey = allSettings.find(s => s.key === 'tvdb_api_key')?.value;
+    const savedPin = allSettings.find(s => s.key === 'tvdb_user_pin')?.value ?? '';
+
+    if (savedKey !== trimmedKey || savedPin !== trimmedPin) {
+      return res.status(500).json({ success: false, error: 'TVDB credentials were not saved correctly. Please try again.' });
+    }
+
+    const tvdbClient = (await import('../tvdb/client')).default;
+    tvdbClient.updateConfig();
+
+    res.json({ success: true, message: 'TVDB credentials saved successfully' });
+  } catch (error: any) {
+    console.error('Save TVDB config error:', error);
+    res.status(500).json({ success: false, error: 'Failed to save TVDB configuration: ' + (error?.message || 'Unknown error') });
   }
 });
 
