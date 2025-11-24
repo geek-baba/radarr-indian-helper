@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getSyncedRadarrMovies, getLastRadarrSync, syncRadarrMovies, getSyncedRadarrMovieByTmdbId, getSyncedRadarrMovieByRadarrId } from '../services/radarrSync';
-import { getSyncedSonarrShows, getLastSonarrSync, syncSonarrShows } from '../services/sonarrSync';
+import { getSyncedSonarrShows, getLastSonarrSync, syncSonarrShows, getSyncedSonarrShowBySonarrId } from '../services/sonarrSync';
 import { getSyncedRssItems, getSyncedRssItemsByFeed, getLastRssSync, syncRssFeeds, backfillMissingIds } from '../services/rssSync';
 import { feedsModel } from '../models/feeds';
 import { releasesModel } from '../models/releases';
@@ -159,11 +159,68 @@ router.get('/tv-releases', (req: Request, res: Response) => {
       });
     }
     
-    // Enrich with feed names
-    const enrichedReleases = filteredReleases.map(release => ({
-      ...release,
-      feed_name: feedMap[release.feed_id] || 'Unknown Feed',
-    }));
+    // Enrich with feed names, poster URLs, and RSS metadata
+    const enrichedReleases = filteredReleases.map(release => {
+      const enriched: any = {
+        ...release,
+        feed_name: feedMap[release.feed_id] || 'Unknown Feed',
+        posterUrl: undefined,
+      };
+      
+      // Get poster URL from release's tmdb_poster_url or tvdb_poster_url first
+      if (release.tmdb_poster_url) {
+        enriched.posterUrl = release.tmdb_poster_url;
+      } else if (release.tvdb_poster_url) {
+        enriched.posterUrl = release.tvdb_poster_url;
+      } else if (release.tmdb_id || release.sonarr_series_id) {
+        // Fall back to synced Sonarr data
+        let syncedShow: any = null;
+        if (release.sonarr_series_id) {
+          syncedShow = getSyncedSonarrShowBySonarrId(release.sonarr_series_id);
+        } else if (release.tmdb_id) {
+          // Get by TMDB ID - need to search sonarr_shows
+          const show = db.prepare('SELECT * FROM sonarr_shows WHERE tmdb_id = ?').get(release.tmdb_id) as any;
+          if (show) {
+            try {
+              syncedShow = {
+                ...show,
+                monitored: Boolean(show.monitored),
+                seasons: show.seasons ? JSON.parse(show.seasons) : null,
+                images: show.images ? JSON.parse(show.images) : null,
+              };
+            } catch (error) {
+              // Ignore parsing errors
+            }
+          }
+        }
+        
+        if (syncedShow && syncedShow.images) {
+          try {
+            const images = syncedShow.images; // Already parsed by getSyncedSonarrShowBySonarrId
+            if (Array.isArray(images) && images.length > 0) {
+              const poster = images.find((img: any) => img.coverType === 'poster');
+              if (poster) {
+                enriched.posterUrl = poster.remoteUrl || poster.url;
+              }
+            }
+          } catch (error) {
+            // Ignore parsing errors
+          }
+        }
+      }
+      
+      // Get RSS item metadata (quality, size, etc.) by matching guid
+      const rssItem = db.prepare('SELECT * FROM rss_feed_items WHERE guid = ?').get(release.guid) as any;
+      if (rssItem) {
+        enriched.resolution = rssItem.resolution;
+        enriched.codec = rssItem.codec;
+        enriched.source_tag = rssItem.source_tag;
+        enriched.audio = rssItem.audio;
+        enriched.rss_size_mb = rssItem.rss_size_mb;
+      }
+      
+      return enriched;
+    });
     
     // Get last refresh time (matching engine last run)
     const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;

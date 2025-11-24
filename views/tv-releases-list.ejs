@@ -41,58 +41,164 @@
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Poster</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Show</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Release Title</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Release Name</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Source</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
                   <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Published</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <% releases.forEach(r => { %>
-                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td class="px-4 py-3">
-                      <% if (r.tmdb_poster_url || r.tvdb_poster_url) { %>
+                      <% if (r.posterUrl || r.tmdb_poster_url || r.tvdb_poster_url) { %>
                         <img 
-                          src="<%= r.tmdb_poster_url || r.tvdb_poster_url %>" 
-                          alt="<%= r.show_name %>"
-                          class="w-16 h-24 object-cover rounded"
-                          onerror="this.style.display='none'"
-                        >
+                          src="<%= r.posterUrl || r.tmdb_poster_url || r.tvdb_poster_url %>" 
+                          alt="<%= r.show_name || r.sonarr_series_title || 'TV Show' %> poster" 
+                          class="w-16 h-24 object-cover rounded-lg shadow"
+                          loading="lazy"
+                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                        />
+                        <div class="w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg shadow flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs text-center p-1" style="display: none;">
+                          No Poster
+                        </div>
                       <% } else { %>
-                        <div class="w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-xs text-gray-400">
+                        <div class="w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg shadow flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs text-center p-1">
                           No Poster
                         </div>
                       <% } %>
                     </td>
-                    <td class="px-4 py-3">
-                      <div class="font-medium"><%= r.show_name %></div>
+                    <td class="px-4 py-3 text-sm">
+                      <div class="font-semibold text-gray-900 dark:text-gray-100">
+                        <%= r.sonarr_series_title || r.show_name || 'Unknown Show' %>
+                      </div>
                       <% if (r.season_number !== null && r.season_number !== undefined) { %>
                         <div class="text-xs text-gray-500 dark:text-gray-400">Season <%= r.season_number %></div>
                       <% } %>
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        <% if (r.tvdb_id) { %>TVDB: <%= r.tvdb_id %> <% } %>
-                        <% if (r.tmdb_id) { %>TMDB: <%= r.tmdb_id %> <% } %>
-                        <% if (r.imdb_id) { %>IMDB: <%= r.imdb_id %> <% } %>
+                      <% if (r.tvdb_id) { %>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">TVDB: <%= r.tvdb_id %></div>
+                      <% } %>
+                      <% if (r.tmdb_id) { %>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">TMDB: <%= r.tmdb_id %></div>
+                      <% } %>
+                      <% if (r.imdb_id) { %>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">IMDB: <%= r.imdb_id %></div>
+                      <% } %>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                      <div>
+                        <!-- Release File Name - Not Truncated -->
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="font-mono text-gray-800 dark:text-gray-200 break-all" title="<%= r.title %>"><%= r.title %></span>
+                          <% if (r.link) { %>
+                            <button 
+                              class="copy-link icon-btn p-1 flex-shrink-0" 
+                              data-url="<%= r.link %>" 
+                              data-title="<%= r.title %>"
+                              aria-label="Copy release link"
+                              title="Copy link"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                              </svg>
+                            </button>
+                          <% } %>
+                        </div>
+                        
+                        <!-- Quality Attributes, Size Below Release Name -->
+                        <div class="space-y-1">
+                          <!-- Quality Attributes - Match Movie Releases Style -->
+                          <div class="flex gap-1 flex-wrap items-center">
+                            <% if (r.resolution) { %>
+                              <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 rounded text-xs"><%= r.resolution %></span>
+                            <% } %>
+                            <% if (r.codec) { %>
+                              <span class="px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 rounded text-xs"><%= r.codec %></span>
+                            <% } %>
+                            <% if (r.source_tag) { %>
+                              <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200 rounded text-xs font-semibold" style="font-family: Arial, sans-serif;">
+                                <% if (r.source_tag === 'AMZN') { %>
+                                  <span class="text-orange-600 dark:text-orange-400">AMZN</span>
+                                <% } else if (r.source_tag === 'NF' || r.source_tag === 'Netflix') { %>
+                                  <span class="text-red-600 dark:text-red-400">NF</span>
+                                <% } else if (r.source_tag === 'DSNP' || r.source_tag === 'Disney' || r.source_tag === 'Hotstar') { %>
+                                  <span class="text-blue-600 dark:text-blue-400">DSNP</span>
+                                <% } else if (r.source_tag === 'ZEE5' || r.source_tag === 'Zee5') { %>
+                                  <span class="text-purple-600 dark:text-purple-400">ZEE5</span>
+                                <% } else if (r.source_tag === 'JC' || r.source_tag === 'JioCinema') { %>
+                                  <span class="text-green-600 dark:text-green-400">JC</span>
+                                <% } else if (r.source_tag === 'HS' || r.source_tag === 'Hotstar') { %>
+                                  <span class="text-blue-600 dark:text-blue-400">HS</span>
+                                <% } else if (r.source_tag === 'SS') { %>
+                                  <span class="text-indigo-600 dark:text-indigo-400">SS</span>
+                                <% } else { %>
+                                  <%= r.source_tag %>
+                                <% } %>
+                              </span>
+                            <% } %>
+                            <% if (r.audio) { %>
+                              <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 rounded text-xs"><%= r.audio %></span>
+                            <% } %>
+                            <% if (r.rss_size_mb) { %>
+                              <%
+                                const sizeGiB = typeof r.rss_size_mb === 'number' ? (r.rss_size_mb / 1024) : (parseFloat(r.rss_size_mb) / 1024);
+                              %>
+                              <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded text-xs">
+                                <%= sizeGiB.toFixed(2) %> GiB
+                              </span>
+                            <% } %>
+                          </div>
+                          
+                          <!-- Show Title (if available) -->
+                          <% if (r.sonarr_series_title || r.show_name) { %>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">
+                              Show: <span class="font-medium"><%= r.sonarr_series_title || r.show_name %></span>
+                              <% if (r.season_number !== null && r.season_number !== undefined) { %>
+                                - Season <%= r.season_number %>
+                              <% } %>
+                            </div>
+                          <% } %>
+                        </div>
                       </div>
                     </td>
-                    <td class="px-4 py-3 text-sm"><%= r.title %></td>
-                    <td class="px-4 py-3 text-sm"><%= r.feed_name %></td>
-                    <td class="px-4 py-3">
-                      <span class="px-2 py-1 text-xs rounded-full 
-                        <%= r.status === 'NEW_SHOW' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : '' %>
-                        <%= r.status === 'NEW_SEASON' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : '' %>
-                        <%= r.status === 'IGNORED' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' : '' %>
-                        <%= r.status === 'ADDED' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : '' %>
-                        <%= r.status === 'ATTENTION_NEEDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : '' %>
-                      ">
-                        <%= r.status.replace('_', ' ') %>
-                      </span>
+                    <td class="px-4 py-3 text-sm">
+                      <div class="font-medium text-gray-900 dark:text-gray-100"><%= r.feed_name || r.source_site || 'Unknown' %></div>
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                      <% if (r.status === 'NEW_SHOW') { %>
+                        <span class="badge badge-success text-xs">NEW SHOW</span>
+                      <% } else if (r.status === 'NEW_SEASON') { %>
+                        <span class="badge badge-info text-xs">NEW SEASON</span>
+                      <% } else if (r.status === 'ATTENTION_NEEDED') { %>
+                        <span class="badge badge-warning text-xs">ATTENTION NEEDED</span>
+                      <% } else if (r.status === 'ADDED') { %>
+                        <span class="badge badge-purple text-xs">ADDED</span>
+                      <% } else if (r.status === 'IGNORED') { %>
+                        <span class="badge badge-neutral text-xs">IGNORED</span>
+                      <% } else { %>
+                        <span class="text-xs text-gray-500 dark:text-gray-400"><%= r.status %></span>
+                      <% } %>
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                       <%= new Date(r.published_at).toLocaleString() %>
                     </td>
+                    <td class="px-4 py-3 text-sm text-right">
+                      <% if (r.link) { %>
+                        <a 
+                          href="<%= r.link %>" 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          class="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                          aria-label="View release on source"
+                        >
+                          View
+                        </a>
+                      <% } %>
+                    </td>
                   </tr>
-                <% }); %>
+                <% }) %>
               </tbody>
             </table>
           </div>
@@ -100,7 +206,35 @@
       <% } %>
     </main>
   </div>
+
   <script src="/js/ui.js"></script>
+  <script>
+    // Copy-to-clipboard functionality for release links
+    document.addEventListener('click', (e) => {
+      const copyBtn = e.target.closest('.copy-link');
+      if (!copyBtn) return;
+      
+      const url = copyBtn.dataset.url;
+      const title = copyBtn.dataset.title;
+      const textToCopy = url || title || '';
+      
+      if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          // Simple toast notification
+          const toast = document.createElement('div');
+          toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+          toast.textContent = 'Copied to clipboard!';
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2000);
+        }).catch(() => {
+          const toast = document.createElement('div');
+          toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+          toast.textContent = 'Failed to copy';
+          document.body.appendChild(toast);
+          setTimeout(() => toast.remove(), 2000);
+        });
+      }
+    });
+  </script>
 </body>
 </html>
-
