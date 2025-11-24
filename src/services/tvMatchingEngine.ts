@@ -347,15 +347,15 @@ export async function runTvMatchingEngine(): Promise<TvMatchingStats> {
 
         // Create or update tv_release
         const tvRelease: Omit<TvRelease, 'id'> = {
-          guid: item.guid,
-          title: item.title,
-          normalized_title: item.normalized_title,
+          guid: String(item.guid || ''),
+          title: String(item.title || ''),
+          normalized_title: String(item.normalized_title || ''),
           show_name: showName,
           season_number: season,
-          source_site: item.source_site,
-          feed_id: item.feed_id,
-          link: item.link,
-          published_at: item.published_at,
+          source_site: String(item.source_site || ''),
+          feed_id: Number(item.feed_id || 0),
+          link: String(item.link || ''),
+          published_at: String(item.published_at || new Date().toISOString()),
           tvdb_id: enrichment.tvdbId,
           tmdb_id: enrichment.tmdbId,
           imdb_id: enrichment.imdbId,
