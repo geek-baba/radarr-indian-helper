@@ -49,10 +49,12 @@ export const feedsModel = {
   update: (id: number, feed: Partial<Omit<RSSFeed, 'id' | 'created_at'>>): RSSFeed | undefined => {
     const updates: string[] = [];
     const values: any[] = [];
+    let feedNameChanged = false;
 
     if (feed.name !== undefined) {
       updates.push('name = ?');
       values.push(feed.name);
+      feedNameChanged = true;
     }
     if (feed.url !== undefined) {
       updates.push('url = ?');
@@ -75,6 +77,12 @@ export const feedsModel = {
     values.push(id);
 
     db.prepare(`UPDATE rss_feeds SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    
+    // If feed name changed, update feed_name in all related RSS items
+    if (feedNameChanged && feed.name) {
+      db.prepare('UPDATE rss_feed_items SET feed_name = ? WHERE feed_id = ?').run(feed.name, id);
+    }
+    
     return feedsModel.getById(id);
   },
 
