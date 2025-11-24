@@ -322,8 +322,25 @@ export async function runTvMatchingEngine(): Promise<TvMatchingStats> {
         const preserveStatus = existingRelease && existingRelease.status === 'ADDED';
 
         // Parse show name and season from title
-        const { showName, season } = parseTvTitle(item.title);
+        let { showName, season } = parseTvTitle(item.title);
         console.log(`    Parsed: Show="${showName}", Season=${season !== null ? season : 'unknown'}`);
+
+        // Get feed name to check if it's BWT TVShows
+        const feed = feedsModel.getAll().find(f => f.id === item.feed_id);
+        const feedName = feed?.name || '';
+        
+        // For BWT TVShows feed, remove year from show name (year is often inaccurate)
+        if (feedName.toLowerCase().includes('bwt') && feedName.toLowerCase().includes('tv')) {
+          // Remove year patterns: "2025", "(2025)", "[2025]", ".2025", " 2025"
+          showName = showName
+            .replace(/\s*\((\d{4})\)\s*/g, ' ') // Remove (2025)
+            .replace(/\s*\[(\d{4})\]\s*/g, ' ') // Remove [2025]
+            .replace(/\s*\.(\d{4})\s*/g, ' ') // Remove .2025
+            .replace(/\s+(\d{4})\s+/g, ' ') // Remove standalone 2025
+            .replace(/\s+/g, ' ') // Normalize spaces
+            .trim();
+          console.log(`    Cleaned show name (removed year for BWT TVShows): "${showName}"`);
+        }
 
         // Enrich with TVDB → TMDB → IMDB
         const enrichment = await enrichTvShow(
