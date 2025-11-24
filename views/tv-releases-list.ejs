@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" class="<%= typeof theme !== 'undefined' && theme === 'dark' ? 'dark' : '' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TV Releases — desiarr</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/desiarr-logo.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="bg-[var(--bg)] text-[var(--text)] min-h-screen">
+  <%- include('partials/app-sidebar', { currentPage: 'tv-releases' }) %>
+  
+  <div class="lg:pl-64">
+    <%- include('partials/app-header', { currentSearch: typeof search !== 'undefined' ? search : '', hideRefresh: true, lastRefresh: typeof lastRefresh !== 'undefined' ? lastRefresh : null }) %>
+    
+    <main class="p-4 lg:p-6">
+      <div class="mb-6">
+        <div class="flex justify-end items-center">
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            Showing <span class="font-semibold"><%= filteredCount %></span> of <span class="font-semibold"><%= totalReleases %></span> TV releases
+          </div>
+        </div>
+      </div>
+
+      <% if (releases.length === 0) { %>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+          <p class="text-gray-600 dark:text-gray-400">
+            <% if (typeof search !== 'undefined' && search) { %>
+              No TV releases found matching "<%= search %>"
+            <% } else { %>
+              No TV releases found. Add TV RSS feeds in Settings and sync data.
+            <% } %>
+          </p>
+        </div>
+      <% } else { %>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Poster</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Show</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Release Title</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Source</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Published</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <% releases.forEach(r => { %>
+                  <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-4 py-3">
+                      <% if (r.tmdb_poster_url || r.tvdb_poster_url) { %>
+                        <img 
+                          src="<%= r.tmdb_poster_url || r.tvdb_poster_url %>" 
+                          alt="<%= r.show_name %>"
+                          class="w-16 h-24 object-cover rounded"
+                          onerror="this.style.display='none'"
+                        >
+                      <% } else { %>
+                        <div class="w-16 h-24 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-xs text-gray-400">
+                          No Poster
+                        </div>
+                      <% } %>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="font-medium"><%= r.show_name %></div>
+                      <% if (r.season_number !== null && r.season_number !== undefined) { %>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Season <%= r.season_number %></div>
+                      <% } %>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <% if (r.tvdb_id) { %>TVDB: <%= r.tvdb_id %> <% } %>
+                        <% if (r.tmdb_id) { %>TMDB: <%= r.tmdb_id %> <% } %>
+                        <% if (r.imdb_id) { %>IMDB: <%= r.imdb_id %> <% } %>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-sm"><%= r.title %></td>
+                    <td class="px-4 py-3 text-sm"><%= r.feed_name %></td>
+                    <td class="px-4 py-3">
+                      <span class="px-2 py-1 text-xs rounded-full 
+                        <%= r.status === 'NEW_SHOW' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : '' %>
+                        <%= r.status === 'NEW_SEASON' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : '' %>
+                        <%= r.status === 'IGNORED' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' : '' %>
+                        <%= r.status === 'ADDED' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : '' %>
+                        <%= r.status === 'ATTENTION_NEEDED' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : '' %>
+                      ">
+                        <%= r.status.replace('_', ' ') %>
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                      <%= new Date(r.published_at).toLocaleString() %>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+    </main>
+  </div>
+  <script src="/js/ui.js"></script>
+</body>
+</html>
+

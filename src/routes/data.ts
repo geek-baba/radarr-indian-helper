@@ -3,6 +3,7 @@ import { getSyncedRadarrMovies, getLastRadarrSync, syncRadarrMovies, getSyncedRa
 import { getSyncedRssItems, getSyncedRssItemsByFeed, getLastRssSync, syncRssFeeds, backfillMissingIds } from '../services/rssSync';
 import { feedsModel } from '../models/feeds';
 import { releasesModel } from '../models/releases';
+import { tvReleasesModel } from '../models/tvReleases';
 import { syncProgress } from '../services/syncProgress';
 import { logStorage } from '../services/logStorage';
 import db from '../db';
@@ -113,6 +114,62 @@ router.get('/releases', (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('All Releases page error:', error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// TV Releases page - flattened list of all TV releases
+router.get('/tv-releases', (req: Request, res: Response) => {
+  try {
+    const search = (req.query.search as string) || '';
+    const allTvReleases = tvReleasesModel.getAll();
+    const feeds = feedsModel.getAll();
+    
+    // Get feed names for display
+    const feedMap: { [key: number]: string } = {};
+    for (const feed of feeds) {
+      if (feed.id) {
+        feedMap[feed.id] = feed.name;
+      }
+    }
+    
+    // Filter releases by search term if provided
+    let filteredReleases = allTvReleases;
+    if (search && search.trim()) {
+      const searchLower = search.toLowerCase().trim();
+      filteredReleases = allTvReleases.filter(release => {
+        const title = (release.title || '').toLowerCase();
+        const showName = (release.show_name || '').toLowerCase();
+        const sonarrTitle = (release.sonarr_series_title || '').toLowerCase();
+        const status = (release.status || '').toLowerCase();
+        
+        return title.includes(searchLower) ||
+               showName.includes(searchLower) ||
+               sonarrTitle.includes(searchLower) ||
+               status.includes(searchLower);
+      });
+    }
+    
+    // Enrich with feed names
+    const enrichedReleases = filteredReleases.map(release => ({
+      ...release,
+      feed_name: feedMap[release.feed_id] || 'Unknown Feed',
+    }));
+    
+    // Get last refresh time (matching engine last run)
+    const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;
+    const lastRefresh = lastRefreshResult?.value ? new Date(lastRefreshResult.value) : null;
+    
+    res.render('tv-releases-list', {
+      releases: enrichedReleases,
+      totalReleases: allTvReleases.length,
+      filteredCount: enrichedReleases.length,
+      search,
+      hideRefresh: true,
+      lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
+    });
+  } catch (error) {
+    console.error('TV Releases page error:', error);
     res.status(500).send('Internal server error');
   }
 });

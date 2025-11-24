@@ -22,7 +22,7 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  CREATE TABLE IF NOT EXISTS releases (
+  CREATE TABLE IF NOT EXISTS movie_releases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guid TEXT UNIQUE NOT NULL,
     title TEXT NOT NULL,
@@ -57,10 +57,39 @@ db.exec(`
     FOREIGN KEY (feed_id) REFERENCES rss_feeds(id)
   );
 
-  CREATE INDEX IF NOT EXISTS idx_releases_status ON releases(status);
-  CREATE INDEX IF NOT EXISTS idx_releases_guid ON releases(guid);
-  CREATE INDEX IF NOT EXISTS idx_releases_tmdb_id ON releases(tmdb_id);
-  CREATE INDEX IF NOT EXISTS idx_releases_radarr_movie_id ON releases(radarr_movie_id);
+  CREATE INDEX IF NOT EXISTS idx_movie_releases_status ON movie_releases(status);
+  CREATE INDEX IF NOT EXISTS idx_movie_releases_guid ON movie_releases(guid);
+  CREATE INDEX IF NOT EXISTS idx_movie_releases_tmdb_id ON movie_releases(tmdb_id);
+  CREATE INDEX IF NOT EXISTS idx_movie_releases_radarr_movie_id ON movie_releases(radarr_movie_id);
+
+  CREATE TABLE IF NOT EXISTS tv_releases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guid TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    normalized_title TEXT NOT NULL,
+    show_name TEXT NOT NULL,
+    season_number INTEGER,
+    source_site TEXT NOT NULL,
+    feed_id INTEGER NOT NULL,
+    link TEXT NOT NULL,
+    published_at TEXT NOT NULL,
+    tvdb_id INTEGER,
+    tmdb_id INTEGER,
+    imdb_id TEXT,
+    tvdb_poster_url TEXT,
+    tmdb_poster_url TEXT,
+    sonarr_series_id INTEGER,
+    sonarr_series_title TEXT,
+    status TEXT NOT NULL DEFAULT 'NEW_SHOW',
+    last_checked_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (feed_id) REFERENCES rss_feeds(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tv_releases_status ON tv_releases(status);
+  CREATE INDEX IF NOT EXISTS idx_tv_releases_guid ON tv_releases(guid);
+  CREATE INDEX IF NOT EXISTS idx_tv_releases_tvdb_id ON tv_releases(tvdb_id);
+  CREATE INDEX IF NOT EXISTS idx_tv_releases_tmdb_id ON tv_releases(tmdb_id);
+  CREATE INDEX IF NOT EXISTS idx_tv_releases_sonarr_series_id ON tv_releases(sonarr_series_id);
 
   CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
@@ -174,26 +203,6 @@ try {
     console.log('Added column: rss_feed_items.imdb_id_manual');
   }
   
-  const columns = db.prepare("PRAGMA table_info(releases)").all() as any[];
-  const columnNames = columns.map((c: any) => c.name);
-  
-  if (!columnNames.includes('existing_file_path')) {
-    db.exec('ALTER TABLE releases ADD COLUMN existing_file_path TEXT');
-    console.log('Added column: existing_file_path');
-  }
-  if (!columnNames.includes('existing_file_attributes')) {
-    db.exec('ALTER TABLE releases ADD COLUMN existing_file_attributes TEXT');
-    console.log('Added column: existing_file_attributes');
-  }
-  if (!columnNames.includes('radarr_history')) {
-    db.exec('ALTER TABLE releases ADD COLUMN radarr_history TEXT');
-    console.log('Added column: radarr_history');
-  }
-  if (!columnNames.includes('imdb_id')) {
-    db.exec('ALTER TABLE releases ADD COLUMN imdb_id TEXT');
-    console.log('Added column: imdb_id');
-  }
-  
   // Check radarr_movies table for date_added column
   const radarrColumns = db.prepare("PRAGMA table_info(radarr_movies)").all() as any[];
   const radarrColumnNames = radarrColumns.map((c: any) => c.name);
@@ -213,6 +222,57 @@ try {
     // Migrate existing feeds to 'movie' type (already default, but explicit update for clarity)
     db.exec("UPDATE rss_feeds SET feed_type = 'movie' WHERE feed_type IS NULL OR feed_type = ''");
     console.log('Migrated existing feeds to movie type');
+  }
+  
+  // Migrate releases table to movie_releases if it exists
+  const releasesTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='releases'").get();
+  const movieReleasesTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='movie_releases'").get();
+  
+  if (releasesTable && !movieReleasesTable) {
+    console.log('Migrating releases table to movie_releases...');
+    // Rename table
+    db.exec('ALTER TABLE releases RENAME TO movie_releases');
+    console.log('Renamed releases table to movie_releases');
+    
+    // Rename indexes
+    try {
+      db.exec('DROP INDEX IF EXISTS idx_releases_status');
+      db.exec('DROP INDEX IF EXISTS idx_releases_guid');
+      db.exec('DROP INDEX IF EXISTS idx_releases_tmdb_id');
+      db.exec('DROP INDEX IF EXISTS idx_releases_radarr_movie_id');
+    } catch (e) {
+      // Indexes might not exist, continue
+    }
+    
+    // Recreate indexes with new names
+    db.exec('CREATE INDEX IF NOT EXISTS idx_movie_releases_status ON movie_releases(status)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_movie_releases_guid ON movie_releases(guid)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_movie_releases_tmdb_id ON movie_releases(tmdb_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_movie_releases_radarr_movie_id ON movie_releases(radarr_movie_id)');
+    console.log('Recreated indexes for movie_releases');
+  }
+  
+  // Update migration code that references 'releases' to use 'movie_releases'
+  const movieReleaseColumns = db.prepare("PRAGMA table_info(movie_releases)").all() as any[];
+  const movieReleaseColumnNames = movieReleaseColumns.map((c: any) => c.name);
+  
+  if (movieReleaseColumnNames.length > 0) {
+    if (!movieReleaseColumnNames.includes('existing_file_path')) {
+      db.exec('ALTER TABLE movie_releases ADD COLUMN existing_file_path TEXT');
+      console.log('Added column: movie_releases.existing_file_path');
+    }
+    if (!movieReleaseColumnNames.includes('existing_file_attributes')) {
+      db.exec('ALTER TABLE movie_releases ADD COLUMN existing_file_attributes TEXT');
+      console.log('Added column: movie_releases.existing_file_attributes');
+    }
+    if (!movieReleaseColumnNames.includes('radarr_history')) {
+      db.exec('ALTER TABLE movie_releases ADD COLUMN radarr_history TEXT');
+      console.log('Added column: movie_releases.radarr_history');
+    }
+    if (!movieReleaseColumnNames.includes('imdb_id')) {
+      db.exec('ALTER TABLE movie_releases ADD COLUMN imdb_id TEXT');
+      console.log('Added column: movie_releases.imdb_id');
+    }
   }
   
   // Check if structured_logs table exists

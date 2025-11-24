@@ -1,0 +1,133 @@
+import db from '../db';
+import { TvRelease, TvReleaseStatus } from '../types/Release';
+
+function convertTvRelease(row: any): TvRelease {
+  return {
+    ...row,
+    season_number: row.season_number ? parseInt(row.season_number, 10) : undefined,
+  };
+}
+
+export const tvReleasesModel = {
+  getAll: (status?: TvReleaseStatus): TvRelease[] => {
+    let rows: any[];
+    if (status) {
+      rows = db.prepare(`
+        SELECT r.* FROM tv_releases r
+        INNER JOIN rss_feed_items rss ON r.guid = rss.guid
+        WHERE r.status = ?
+        ORDER BY r.published_at DESC
+      `).all(status) as any[];
+    } else {
+      rows = db.prepare(`
+        SELECT r.* FROM tv_releases r
+        INNER JOIN rss_feed_items rss ON r.guid = rss.guid
+        ORDER BY r.published_at DESC
+      `).all() as any[];
+    }
+    return rows.map(convertTvRelease);
+  },
+
+  getByStatus: (status: TvReleaseStatus): TvRelease[] => {
+    const rows = db
+      .prepare('SELECT * FROM tv_releases WHERE status = ? ORDER BY published_at DESC')
+      .all(status) as any[];
+    return rows.map(convertTvRelease);
+  },
+
+  getById: (id: number): TvRelease | undefined => {
+    const row = db.prepare('SELECT * FROM tv_releases WHERE id = ?').get(id) as any;
+    return row ? convertTvRelease(row) : undefined;
+  },
+
+  getByGuid: (guid: string): TvRelease | undefined => {
+    const row = db.prepare('SELECT * FROM tv_releases WHERE guid = ?').get(guid) as any;
+    return row ? convertTvRelease(row) : undefined;
+  },
+
+  upsert: (release: Omit<TvRelease, 'id'>): TvRelease => {
+    const existing = tvReleasesModel.getByGuid(release.guid);
+    
+    if (existing) {
+      // Update existing release, but preserve status if it's ADDED
+      const status = existing.status === 'ADDED' 
+        ? existing.status 
+        : release.status;
+
+      db.prepare(`
+        UPDATE tv_releases SET
+          title = ?,
+          normalized_title = ?,
+          show_name = ?,
+          season_number = ?,
+          source_site = ?,
+          feed_id = ?,
+          link = ?,
+          published_at = ?,
+          tvdb_id = ?,
+          tmdb_id = ?,
+          imdb_id = ?,
+          tvdb_poster_url = ?,
+          tmdb_poster_url = ?,
+          sonarr_series_id = ?,
+          sonarr_series_title = ?,
+          status = ?,
+          last_checked_at = datetime('now')
+        WHERE guid = ?
+      `).run(
+        release.title,
+        release.normalized_title,
+        release.show_name,
+        release.season_number || null,
+        release.source_site,
+        release.feed_id,
+        release.link,
+        release.published_at,
+        release.tvdb_id || null,
+        release.tmdb_id || null,
+        release.imdb_id || null,
+        release.tvdb_poster_url || null,
+        release.tmdb_poster_url || null,
+        release.sonarr_series_id || null,
+        release.sonarr_series_title || null,
+        status,
+        release.guid
+      );
+      return tvReleasesModel.getByGuid(release.guid)!;
+    } else {
+      // Insert new release
+      const result = db.prepare(`
+        INSERT INTO tv_releases (
+          guid, title, normalized_title, show_name, season_number, source_site, feed_id, link,
+          published_at, tvdb_id, tmdb_id, imdb_id, tvdb_poster_url, tmdb_poster_url,
+          sonarr_series_id, sonarr_series_title, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        release.guid,
+        release.title,
+        release.normalized_title,
+        release.show_name,
+        release.season_number || null,
+        release.source_site,
+        release.feed_id,
+        release.link,
+        release.published_at,
+        release.tvdb_id || null,
+        release.tmdb_id || null,
+        release.imdb_id || null,
+        release.tvdb_poster_url || null,
+        release.tmdb_poster_url || null,
+        release.sonarr_series_id || null,
+        release.sonarr_series_title || null,
+        release.status
+      );
+      return tvReleasesModel.getById(result.lastInsertRowid as number)!;
+    }
+  },
+
+  updateStatus: (id: number, status: TvReleaseStatus): boolean => {
+    const result = db.prepare('UPDATE tv_releases SET status = ?, last_checked_at = datetime(\'now\') WHERE id = ?').run(status, id);
+    return result.changes > 0;
+  },
+};
+
