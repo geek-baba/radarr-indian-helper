@@ -69,16 +69,19 @@ router.get('/feeds/:id', async (req: Request, res: Response) => {
 
 router.post('/feeds', async (req: Request, res: Response) => {
   try {
-    const { name, url, enabled } = req.body;
+    const { name, url, enabled, feed_type } = req.body;
     
     if (!name || !url) {
       return res.status(400).json({ error: 'Name and URL are required' });
     }
 
+    const feedType = feed_type === 'tv' ? 'tv' : 'movie'; // Default to 'movie' if not specified
+
     const feed = feedsModel.create({
       name,
       url,
       enabled: enabled === 'true' || enabled === true,
+      feed_type: feedType,
     });
 
     res.json({ success: true, feed });
@@ -91,7 +94,7 @@ router.post('/feeds', async (req: Request, res: Response) => {
 router.put('/feeds/:id', async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, url, enabled } = req.body;
+    const { name, url, enabled, feed_type } = req.body;
 
     const updates: any = {};
     if (name !== undefined) updates.name = name;
@@ -100,6 +103,9 @@ router.put('/feeds/:id', async (req: Request, res: Response) => {
       updates.enabled = typeof enabled === 'string' 
         ? (enabled === 'true' || enabled === '1') 
         : Boolean(enabled);
+    }
+    if (feed_type !== undefined) {
+      updates.feed_type = feed_type === 'tv' ? 'tv' : 'movie';
     }
 
     const feed = feedsModel.update(id, updates);

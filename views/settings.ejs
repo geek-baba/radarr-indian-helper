@@ -92,6 +92,7 @@
             <tr>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enabled</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -101,6 +102,11 @@
               <tr>
                 <td class="px-4 py-3 text-sm"><%= feed.name %></td>
                 <td class="px-4 py-3 text-sm text-gray-600"><%= feed.url %></td>
+                <td class="px-4 py-3 text-sm">
+                  <span class="px-2 py-1 text-xs rounded-full <%= feed.feed_type === 'tv' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>">
+                    <%= feed.feed_type === 'tv' ? 'TV' : 'Movie' %>
+                  </span>
+                </td>
                 <td class="px-4 py-3 text-sm">
                   <span class="<%= feed.enabled ? 'text-green-600' : 'text-red-600' %>">
                     <%= feed.enabled ? 'Yes' : 'No' %>
@@ -458,6 +464,14 @@
         <div class="mb-4">
           <label class="block text-sm font-medium mb-2">URL:</label>
           <input type="url" id="feedUrl" name="url" required class="w-full border rounded px-2 py-1">
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Feed Type:</label>
+          <select id="feedType" name="feed_type" required class="w-full border rounded px-2 py-1">
+            <option value="movie">Movie</option>
+            <option value="tv">TV Show</option>
+          </select>
+          <p class="text-xs text-gray-500 mt-1">Select whether this feed contains movies or TV shows</p>
         </div>
         <div class="mb-4">
           <label class="flex items-center">
@@ -839,6 +853,7 @@
       document.getElementById('modalTitle').textContent = 'Add RSS Feed';
       document.getElementById('feedForm').reset();
       document.getElementById('feedId').value = '';
+      document.getElementById('feedType').value = 'movie';
       document.getElementById('feedEnabled').checked = true;
       modal.classList.remove('hidden');
       console.log('Modal shown');
@@ -854,6 +869,7 @@
           document.getElementById('feedId').value = data.feed.id;
           document.getElementById('feedName').value = data.feed.name;
           document.getElementById('feedUrl').value = data.feed.url;
+          document.getElementById('feedType').value = data.feed.feed_type || 'movie';
           document.getElementById('feedEnabled').checked = data.feed.enabled;
           document.getElementById('feedModal').classList.remove('hidden');
         } else {
@@ -891,6 +907,7 @@
       const feed = {
         name: form.name.value,
         url: form.url.value,
+        feed_type: form.feed_type.value,
         enabled: form.enabled.checked
       };
       if (editingFeedId) {

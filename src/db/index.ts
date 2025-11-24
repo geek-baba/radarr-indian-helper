@@ -203,6 +203,18 @@ try {
     console.log('Added column: radarr_movies.date_added');
   }
   
+  // Check rss_feeds table for feed_type column
+  const feedColumns = db.prepare("PRAGMA table_info(rss_feeds)").all() as any[];
+  const feedColumnNames = feedColumns.map((c: any) => c.name);
+  
+  if (!feedColumnNames.includes('feed_type')) {
+    db.exec("ALTER TABLE rss_feeds ADD COLUMN feed_type TEXT NOT NULL DEFAULT 'movie'");
+    console.log('Added column: rss_feeds.feed_type');
+    // Migrate existing feeds to 'movie' type (already default, but explicit update for clarity)
+    db.exec("UPDATE rss_feeds SET feed_type = 'movie' WHERE feed_type IS NULL OR feed_type = ''");
+    console.log('Migrated existing feeds to movie type');
+  }
+  
   // Check if structured_logs table exists
   const logsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='structured_logs'").get();
   if (!logsTable) {
