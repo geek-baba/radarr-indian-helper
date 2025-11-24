@@ -1,6 +1,7 @@
 import db from '../db';
 import sonarrClient from '../sonarr/client';
 import { syncProgress } from './syncProgress';
+import { settingsModel } from '../models/settings';
 
 export interface SonarrSyncStats {
   totalShows: number;
@@ -204,7 +205,6 @@ export async function syncSonarrShows(): Promise<SonarrSyncStats> {
     );
 
     // Save last sync time
-    const settingsModel = (await import('../models/settings')).settingsModel;
     settingsModel.set('sonarr_last_sync', new Date().toISOString());
 
     console.log(`Sonarr sync completed: ${stats.synced} new, ${stats.updated} updated, ${stats.errors.length} errors`);
@@ -252,7 +252,6 @@ export function getSyncedSonarrShowBySonarrId(sonarrId: number) {
 }
 
 export function getLastSonarrSync(): Date | null {
-  const { settingsModel } = require('../models/settings');
   const lastSync = settingsModel.get('sonarr_last_sync');
   return lastSync ? new Date(lastSync) : null;
 }
