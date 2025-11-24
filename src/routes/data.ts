@@ -99,12 +99,17 @@ router.get('/releases', (req: Request, res: Response) => {
       return dateB - dateA;
     });
     
+    // Get last refresh time (matching engine last run, same as dashboard)
+    const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;
+    const lastRefresh = lastRefreshResult?.value ? new Date(lastRefreshResult.value) : null;
+    
     res.render('releases-list', {
       releases: enrichedReleases,
       totalReleases: allReleases.length,
       filteredCount: enrichedReleases.length,
       search,
       hideRefresh: true,
+      lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
     });
   } catch (error) {
     console.error('All Releases page error:', error);
@@ -209,6 +214,9 @@ router.get('/rss', (req: Request, res: Response) => {
     const items = getSyncedRssItems(feedId);
     const lastSync = getLastRssSync();
     
+    // Convert lastSync to ISO string for header display
+    const lastRefresh = lastSync ? (typeof lastSync === 'string' ? lastSync : lastSync.toISOString()) : null;
+    
     res.render('rss-data', {
       feeds,
       itemsByFeed,
@@ -216,6 +224,7 @@ router.get('/rss', (req: Request, res: Response) => {
       selectedFeedId: feedId,
       lastSync,
       totalItems: items.length,
+      lastRefresh,
     });
   } catch (error) {
     console.error('RSS data page error:', error);

@@ -12,18 +12,12 @@
   <%- include('partials/app-sidebar', { currentPage: 'radarr' }) %>
   
   <div class="lg:pl-64">
-    <%- include('partials/app-header', { currentSearch: typeof search !== 'undefined' ? search : '' }) %>
+    <%- include('partials/app-header', { currentSearch: typeof search !== 'undefined' ? search : '', lastRefresh: typeof lastRefresh !== 'undefined' ? lastRefresh : null }) %>
     
     <main class="p-4 lg:p-6">
     <div class="mb-6">
       <div class="flex justify-between items-center mb-4">
         <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Last synced: <span id="lastSyncTime" data-utc="<%= lastSync ? (typeof lastSync === 'string' ? lastSync : lastSync.toISOString()) : '' %>">
-              <%= lastSync ? (typeof lastSync === 'string' ? new Date(lastSync).toLocaleString() : lastSync.toLocaleString()) : 'Never' %>
-            </span>
-          </p>
-        </div>
         <div class="flex items-center gap-4">
           <div class="text-right">
             <div class="text-sm text-gray-600 dark:text-gray-400">

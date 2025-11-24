@@ -12,7 +12,7 @@
   <%- include('partials/app-sidebar', { currentPage: 'releases' }) %>
   
   <div class="lg:pl-64">
-    <%- include('partials/app-header', { currentSearch: typeof search !== 'undefined' ? search : '', hideRefresh: true }) %>
+    <%- include('partials/app-header', { currentSearch: typeof search !== 'undefined' ? search : '', hideRefresh: true, lastRefresh: typeof lastRefresh !== 'undefined' ? lastRefresh : null }) %>
     
     <main class="p-4 lg:p-6">
       <div class="mb-6">

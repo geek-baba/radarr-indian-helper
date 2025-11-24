@@ -42,16 +42,12 @@
   <%- include('partials/app-sidebar', { currentPage: 'rss' }) %>
   
   <div class="lg:pl-64">
-    <%- include('partials/app-header', { currentSearch: '', hideRefresh: true }) %>
+    <%- include('partials/app-header', { currentSearch: '', hideRefresh: true, lastRefresh: typeof lastRefresh !== 'undefined' ? lastRefresh : null }) %>
     
     <main class="p-4 lg:p-6">
     <div class="mb-6">
       <div class="flex justify-between items-center mb-4">
         <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Last synced: <span id="lastSyncText"><%= lastSync ? new Date(lastSync).toLocaleString() : 'Never' %></span>
-          </p>
-        </div>
         <div class="flex items-center gap-4">
           <div class="text-right">
             <div class="text-sm text-gray-600 dark:text-gray-400">
