@@ -142,6 +142,7 @@ router.get('/radarr', (req: Request, res: Response) => {
       total,
       search,
       hideRefresh: true,
+      lastRefresh: lastSync ? (typeof lastSync === 'string' ? lastSync : lastSync.toISOString()) : null,
     });
   } catch (error) {
     console.error('Radarr data page error:', error);
