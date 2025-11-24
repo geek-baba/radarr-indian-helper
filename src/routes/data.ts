@@ -267,9 +267,49 @@ router.get('/radarr/sync/progress', (req: Request, res: Response) => {
 router.get('/rss', (req: Request, res: Response) => {
   try {
     const feedId = req.query.feedId ? parseInt(req.query.feedId as string, 10) : undefined;
+    const feedType = req.query.feedType as string | undefined; // 'movie' or 'tv'
     const feeds = feedsModel.getAll();
     const itemsByFeed = getSyncedRssItemsByFeed();
-    const items = getSyncedRssItems(feedId);
+    
+    // Get items with feed type and TVDB ID (from tv_releases if available)
+    let items: any[];
+    if (feedId) {
+      items = db.prepare(`
+        SELECT 
+          rss.*,
+          f.feed_type,
+          tv.tvdb_id
+        FROM rss_feed_items rss
+        LEFT JOIN rss_feeds f ON rss.feed_id = f.id
+        LEFT JOIN tv_releases tv ON rss.guid = tv.guid
+        WHERE rss.feed_id = ?
+        ORDER BY datetime(rss.published_at) DESC
+      `).all(feedId);
+    } else if (feedType) {
+      items = db.prepare(`
+        SELECT 
+          rss.*,
+          f.feed_type,
+          tv.tvdb_id
+        FROM rss_feed_items rss
+        LEFT JOIN rss_feeds f ON rss.feed_id = f.id
+        LEFT JOIN tv_releases tv ON rss.guid = tv.guid
+        WHERE f.feed_type = ?
+        ORDER BY datetime(rss.published_at) DESC
+      `).all(feedType);
+    } else {
+      items = db.prepare(`
+        SELECT 
+          rss.*,
+          f.feed_type,
+          tv.tvdb_id
+        FROM rss_feed_items rss
+        LEFT JOIN rss_feeds f ON rss.feed_id = f.id
+        LEFT JOIN tv_releases tv ON rss.guid = tv.guid
+        ORDER BY datetime(rss.published_at) DESC
+      `).all();
+    }
+    
     const lastSync = getLastRssSync();
     
     // Convert lastSync to ISO string for header display
@@ -280,6 +320,7 @@ router.get('/rss', (req: Request, res: Response) => {
       itemsByFeed,
       items,
       selectedFeedId: feedId,
+      selectedFeedType: feedType,
       lastSync,
       totalItems: items.length,
       lastRefresh,

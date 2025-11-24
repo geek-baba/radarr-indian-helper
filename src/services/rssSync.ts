@@ -764,16 +764,18 @@ export function getSyncedRssItems(feedId?: number): any[] {
 /**
  * Get RSS items grouped by feed
  */
-export function getSyncedRssItemsByFeed(): Array<{ feedId: number; feedName: string; itemCount: number; lastSync: string }> {
+export function getSyncedRssItemsByFeed(): Array<{ feedId: number; feedName: string; feedType: string; itemCount: number; lastSync: string }> {
   return db.prepare(`
     SELECT 
-      feed_id as feedId,
-      feed_name as feedName,
+      rss.feed_id as feedId,
+      rss.feed_name as feedName,
+      COALESCE(f.feed_type, 'movie') as feedType,
       COUNT(*) as itemCount,
-      MAX(synced_at) as lastSync
-    FROM rss_feed_items
-    GROUP BY feed_id, feed_name
-    ORDER BY feed_name
+      MAX(rss.synced_at) as lastSync
+    FROM rss_feed_items rss
+    LEFT JOIN rss_feeds f ON rss.feed_id = f.id
+    GROUP BY rss.feed_id, rss.feed_name, f.feed_type
+    ORDER BY f.feed_type, rss.feed_name
   `).all() as any[];
 }
 
