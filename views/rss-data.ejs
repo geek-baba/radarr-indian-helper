@@ -612,7 +612,8 @@
       fetch('/data/rss/sync/progress')
         .then(response => response.json())
         .then(data => {
-          if (data.success && data.progress) {
+          // Only show progress if it's an RSS sync (page-specific)
+          if (data.success && data.progress && data.progress.type === 'rss') {
             const progress = data.progress;
             const progressBar = document.getElementById('progressBar');
             const progressPercent = document.getElementById('progressPercent');
@@ -653,6 +654,17 @@
                 window.location.reload();
               }, 2000);
             }
+            // If progress type changed (not rss), stop polling
+            else if (progress.type !== 'rss') {
+              clearInterval(progressInterval);
+              progressInterval = null;
+              resetButton();
+            }
+          } else if (data.success && data.progress && data.progress.type !== 'rss') {
+            // Wrong sync type - stop polling
+            clearInterval(progressInterval);
+            progressInterval = null;
+            resetButton();
           }
         })
         .catch(error => {
@@ -676,6 +688,41 @@
         progressInterval = null;
       }
     }
+
+    // Check for existing RSS sync on page load (only once, don't auto-poll)
+    window.addEventListener('load', async () => {
+      try {
+        const response = await fetch('/data/rss/sync/progress');
+        const data = await response.json();
+        
+        // Only start polling if there's an active RSS sync (page-specific)
+        if (data.success && data.progress && data.progress.isRunning && data.progress.type === 'rss') {
+          // Show progress bar
+          const progressContainer = document.getElementById('progressContainer');
+          if (progressContainer) {
+            progressContainer.classList.remove('hidden');
+          }
+          
+          // Disable sync button
+          const button = document.getElementById('syncButton');
+          const buttonText = document.getElementById('syncButtonText');
+          const syncIcon = document.getElementById('syncIcon');
+          if (button) {
+            button.disabled = true;
+            button.classList.add('opacity-50', 'cursor-not-allowed');
+            if (buttonText) buttonText.textContent = 'Syncing...';
+            if (syncIcon) syncIcon.classList.add('animate-spin');
+          }
+          
+          // Start polling for progress
+          progressInterval = setInterval(pollProgress, 500);
+          pollProgress();
+        }
+      } catch (error) {
+        // Silently fail - no active sync
+        console.log('No active RSS sync detected');
+      }
+    });
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {

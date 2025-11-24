@@ -291,7 +291,8 @@
         const response = await fetch('/data/radarr/sync/progress');
         const data = await response.json();
         
-        if (data.progress) {
+        // Only show progress if it's a Radarr sync (page-specific)
+        if (data.progress && data.progress.type === 'radarr') {
           const progress = data.progress;
           const progressBar = document.getElementById('progressBar');
           const progressPercent = document.getElementById('progressPercent');
@@ -351,8 +352,14 @@
               }
             }
           }
+          // If progress type changed (not radarr), stop polling
+          else if (progress.type !== 'radarr') {
+            clearInterval(progressInterval);
+            progressInterval = null;
+            resetButton();
+          }
         } else {
-          // No progress data, might be done
+          // No progress data or wrong type, might be done
           clearInterval(progressInterval);
           progressInterval = null;
           resetButton();
@@ -405,8 +412,8 @@
         const response = await fetch('/data/radarr/sync/progress');
         const data = await response.json();
         
-        // Only start polling if there's an active sync
-        if (data.progress && data.progress.isRunning) {
+        // Only start polling if there's an active Radarr sync (page-specific)
+        if (data.progress && data.progress.isRunning && data.progress.type === 'radarr') {
           // Show progress bar
           const progressContainer = document.getElementById('progressContainer');
           if (progressContainer) {
