@@ -136,17 +136,17 @@
       </p>
 
       <% const radarrConfigured = radarrApiUrl && radarrApiKey; %>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Radarr</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Radarr</div>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= radarrConfigured ? 'Connected' : 'Not configured' %></span>
-              <span class="px-2 py-0.5 text-xs rounded-full <%= radarrConfigured ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= radarrConfigured ? 'Connected' : 'Not configured' %></span>
+              <span class="px-2 py-0.5 text-[11px] rounded-full <%= radarrConfigured ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
                 <%= radarrConfigured ? 'Healthy' : 'Action needed' %>
               </span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-all"><%= radarrApiUrl || 'No API URL configured' %></p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1 break-all"><%= radarrApiUrl || 'No API URL configured' %></p>
           </div>
           <div class="flex gap-2">
             <button type="button" data-connection-toggle="radarr" onclick="toggleConnectionEdit('radarr')" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -193,17 +193,17 @@
       </div>
 
       <% const sonarrConfigured = sonarrApiUrl && sonarrApiKey; %>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Sonarr</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Sonarr</div>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= sonarrConfigured ? 'Connected' : 'Not configured' %></span>
-              <span class="px-2 py-0.5 text-xs rounded-full <%= sonarrConfigured ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= sonarrConfigured ? 'Connected' : 'Not configured' %></span>
+              <span class="px-2 py-0.5 text-[11px] rounded-full <%= sonarrConfigured ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
                 <%= sonarrConfigured ? 'Healthy' : 'Action needed' %>
               </span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-all"><%= sonarrApiUrl || 'No API URL configured' %></p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1 break-all"><%= sonarrApiUrl || 'No API URL configured' %></p>
           </div>
           <button type="button" data-connection-toggle="sonarr" onclick="toggleConnectionEdit('sonarr')" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700">
             <span class="edit-btn-label">Edit</span>
@@ -248,17 +248,17 @@
       </div>
 
       <% const tvdbConfigured = tvdbApiKey; %>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">TVDB</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">TVDB</div>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= tvdbConfigured ? 'Connected' : 'Not configured' %></span>
-              <span class="px-2 py-0.5 text-xs rounded-full <%= tvdbConfigured ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= tvdbConfigured ? 'Connected' : 'Not configured' %></span>
+              <span class="px-2 py-0.5 text-[11px] rounded-full <%= tvdbConfigured ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' %>">
                 <%= tvdbConfigured ? 'Ready' : 'Action needed' %>
               </span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Used for TV metadata enrichment.</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Used for TV metadata enrichment.</p>
           </div>
           <button type="button" data-connection-toggle="tvdb" onclick="toggleConnectionEdit('tvdb')" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700">
             <span class="edit-btn-label">Edit</span>
@@ -307,17 +307,17 @@
       </div>
 
       <% const tmdbConfigured = tmdbApiKey; %>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">TMDB</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">TMDB</div>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= tmdbConfigured ? 'Connected' : 'Optional' %></span>
-              <span class="px-2 py-0.5 text-xs rounded-full <%= tmdbConfigured ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700' %>">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= tmdbConfigured ? 'Connected' : 'Optional' %></span>
+              <span class="px-2 py-0.5 text-[11px] rounded-full <%= tmdbConfigured ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700' %>">
                 <%= tmdbConfigured ? 'Enabled' : 'Recommended' %>
               </span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Used for posters and movie lookups without TMDB IDs.</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Used for posters and movie lookups without TMDB IDs.</p>
           </div>
           <button type="button" data-connection-toggle="tmdb" onclick="toggleConnectionEdit('tmdb')" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700">
             <span class="edit-btn-label">Edit</span>
@@ -348,17 +348,17 @@
       </div>
 
       <% const omdbConfigured = omdbApiKey; %>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">OMDB</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">OMDB</div>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= omdbConfigured ? 'Connected' : 'Optional' %></span>
-              <span class="px-2 py-0.5 text-xs rounded-full <%= omdbConfigured ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700' %>">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= omdbConfigured ? 'Connected' : 'Optional' %></span>
+              <span class="px-2 py-0.5 text-[11px] rounded-full <%= omdbConfigured ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700' %>">
                 <%= omdbConfigured ? 'Enabled' : 'Recommended' %>
               </span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Higher IMDb lookup rate limits when configured.</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Higher IMDb lookup rate limits when configured.</p>
           </div>
           <button type="button" data-connection-toggle="omdb" onclick="toggleConnectionEdit('omdb')" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700">
             <span class="edit-btn-label">Edit</span>
@@ -389,17 +389,17 @@
       </div>
 
       <% const braveConfigured = braveApiKey; %>
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Brave Search</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Brave Search</div>
             <div class="flex items-center gap-2 mt-1">
-              <span class="text-lg font-semibold text-gray-900 dark:text-gray-100"><%= braveConfigured ? 'Connected' : 'Optional' %></span>
-              <span class="px-2 py-0.5 text-xs rounded-full <%= braveConfigured ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' %>">
+              <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"><%= braveConfigured ? 'Connected' : 'Optional' %></span>
+              <span class="px-2 py-0.5 text-[11px] rounded-full <%= braveConfigured ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700' %>">
                 <%= braveConfigured ? 'Enabled' : 'Fallback option' %>
               </span>
             </div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Used as a fallback to resolve IDs when other services fail.</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Used as a fallback to resolve IDs when other services fail.</p>
           </div>
           <button type="button" data-connection-toggle="brave" onclick="toggleConnectionEdit('brave')" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700">
             <span class="edit-btn-label">Edit</span>
