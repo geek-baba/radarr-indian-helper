@@ -426,7 +426,9 @@ export async function runTvMatchingEngine(): Promise<TvMatchingStats> {
             status = 'NEW_SEASON';
             stats.newSeasons++;
           } else {
-            status = 'ATTENTION_NEEDED'; // Show exists, season exists - might be a duplicate
+            // Show and season already exist in Sonarr - these are likely duplicates
+            // or already handled by Sonarr, so mark as IGNORED
+            status = 'IGNORED';
             stats.existing++;
           }
         } else {
