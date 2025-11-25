@@ -242,22 +242,46 @@ export function getSyncedSonarrShowBySonarrId(sonarrId: number) {
 }
 
 /**
- * Search Sonarr shows by name (fuzzy match, case-insensitive)
+ * Search Sonarr shows by name (fuzzy match, case-insensitive, ignores year)
  * Returns the best match or null
  */
 export function findSonarrShowByName(showName: string): any | null {
   if (!showName || !showName.trim()) return null;
   
-  const normalizedSearch = showName.toLowerCase().trim();
+  // Normalize search term: lowercase, remove year patterns, trim
+  let normalizedSearch = showName.toLowerCase().trim();
+  normalizedSearch = normalizedSearch
+    .replace(/\s*\((\d{4})\)\s*/g, ' ') // Remove (2025)
+    .replace(/\s*\[(\d{4})\]\s*/g, ' ') // Remove [2025]
+    .replace(/\s+(\d{4})\s+/g, ' ') // Remove standalone 2025
+    .replace(/\s+(\d{4})$/g, '') // Remove year at end
+    .replace(/^(\d{4})\s+/g, '') // Remove year at start
+    .replace(/\s+/g, ' ')
+    .trim();
   
   // Get all Sonarr shows
   const allShows = db.prepare('SELECT * FROM sonarr_shows').all() as any[];
   
   if (allShows.length === 0) return null;
   
-  // Try exact match first (case-insensitive)
-  let match = allShows.find(show => 
-    show.title && show.title.toLowerCase().trim() === normalizedSearch
+  // Normalize all show titles (remove years for comparison)
+  const normalizedShows = allShows.map(show => {
+    if (!show.title) return null;
+    let normalizedTitle = show.title.toLowerCase().trim();
+    normalizedTitle = normalizedTitle
+      .replace(/\s*\((\d{4})\)\s*/g, ' ') // Remove (2019)
+      .replace(/\s*\[(\d{4})\]\s*/g, ' ') // Remove [2019]
+      .replace(/\s+(\d{4})\s+/g, ' ') // Remove standalone year
+      .replace(/\s+(\d{4})$/g, '') // Remove year at end
+      .replace(/^(\d{4})\s+/g, '') // Remove year at start
+      .replace(/\s+/g, ' ')
+      .trim();
+    return { ...show, normalizedTitle };
+  }).filter(Boolean);
+  
+  // Try exact match first (case-insensitive, year-agnostic)
+  let match = normalizedShows.find(show => 
+    show.normalizedTitle === normalizedSearch
   );
   
   if (match) {
@@ -269,12 +293,10 @@ export function findSonarrShowByName(showName: string): any | null {
     };
   }
   
-  // Try fuzzy match - show name contains search term or vice versa
-  match = allShows.find(show => {
-    if (!show.title) return false;
-    const normalizedTitle = show.title.toLowerCase().trim();
-    return normalizedTitle.includes(normalizedSearch) || 
-           normalizedSearch.includes(normalizedTitle);
+  // Try fuzzy match - show name contains search term or vice versa (year-agnostic)
+  match = normalizedShows.find(show => {
+    return show.normalizedTitle.includes(normalizedSearch) || 
+           normalizedSearch.includes(show.normalizedTitle);
   });
   
   if (match) {
