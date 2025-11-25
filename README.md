@@ -37,6 +37,7 @@ Radarr Indian Helper is a Node.js + TypeScript + Express application with an EJS
 - **Smart matching engines**: Movie and TV pipelines normalize RSS titles, score quality attributes, detect dubbed content, enforce size deltas, and enrich releases with TMDB/TVDB posters and identifiers for later rendering.
 - **Manual actions with guardrails**: Add, upgrade, or ignore releases directly from the UI via `/actions` endpoints. TMDB ID is required (Radarr constraint), but releases can be added regardless of their status (NEW / ATTENTION_NEEDED / IGNORED).
 - **Comprehensive Settings UI**: Manage Radarr credentials, feed definitions, and quality rules (weights, preferred languages, dubbed penalties, upgrade thresholds) with instant validation. All settings live in SQLite, not env vars.
+- **App-level controls**: Dedicated “Connections” and “App Settings” tabs let you manage API credentials, sync cadences (Radarr/Sonarr/RSS), and dashboard auto-refresh intervals without editing env vars.
 - **Structured logging & log explorer**: Persistent `structured_logs` table plus `/data/logs` and `/api/logs` endpoints enable timeline filtering, severity breakdowns, and deep dives without shell access.
 - **Global search & keyboard shortcuts**: Cmd/Ctrl+K focuses the search bar. Dashboard search filters cards client-side; data pages leverage server-side queries.
 - **Responsive shell & dark mode**: Tailwind-based layout adapts to mobile/desktop, with saved dark/light preference and mobile-friendly sidebar controls.

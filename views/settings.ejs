@@ -67,6 +67,15 @@
           Connections
         </button>
         <button
+          id="tab-app"
+          onclick="switchTab('app')"
+          class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
+          role="tab"
+          aria-selected="false"
+        >
+          App Settings
+        </button>
+        <button
           id="tab-quality"
           onclick="switchTab('quality')"
           class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -76,6 +85,71 @@
           Quality Settings
         </button>
       </nav>
+    </div>
+
+    <!-- App Settings Section -->
+    <div id="section-app" class="tab-content hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+      <div class="mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Sync & Refresh</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-400">Control automatic dashboard refresh and background sync cadences. These settings apply globally.</p>
+      </div>
+      <form id="appSettingsForm" onsubmit="saveAppSettings(event)" class="space-y-5">
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Dashboard Auto-Refresh (minutes)</label>
+            <input 
+              type="number"
+              min="0"
+              step="1"
+              name="pollIntervalMinutes"
+              value="<%= appSettings && typeof appSettings.pollIntervalMinutes === 'number' ? appSettings.pollIntervalMinutes : 0 %>"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900"
+            >
+            <p class="text-xs text-gray-500 mt-1">Set to 0 to disable automatic refresh.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Radarr Sync Interval (hours)</label>
+            <input 
+              type="number"
+              min="1"
+              step="0.5"
+              name="radarrSyncIntervalHours"
+              value="<%= appSettings && typeof appSettings.radarrSyncIntervalHours === 'number' ? appSettings.radarrSyncIntervalHours : 6 %>"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900"
+            >
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Sonarr Sync Interval (hours)</label>
+            <input 
+              type="number"
+              min="1"
+              step="0.5"
+              name="sonarrSyncIntervalHours"
+              value="<%= appSettings && typeof appSettings.sonarrSyncIntervalHours === 'number' ? appSettings.sonarrSyncIntervalHours : 6 %>"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900"
+            >
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">RSS Sync Interval (hours)</label>
+            <input 
+              type="number"
+              min="0.25"
+              step="0.25"
+              name="rssSyncIntervalHours"
+              value="<%= appSettings && typeof appSettings.rssSyncIntervalHours === 'number' ? appSettings.rssSyncIntervalHours : 1 %>"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-900"
+            >
+          </div>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-xs text-gray-500">Changes apply to future scheduled runs. Manual “Sync & Match” always uses the latest settings.</p>
+          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium self-start sm:self-auto">
+            Save App Settings
+          </button>
+        </div>
+      </form>
+    </div>
     </div>
 
     <!-- RSS Feeds Section -->
@@ -541,30 +615,6 @@
                        class="mr-2">
                 <span>Enable Size Bonus</span>
               </label>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-2">Poll Interval (minutes):</label>
-              <input type="number" name="pollIntervalMinutes" 
-                     value="<%= qualitySettings.pollIntervalMinutes %>"
-                     class="w-full border rounded px-2 py-1">
-              <p class="text-xs text-gray-500 mt-1">Note: This setting is deprecated. Use sync intervals below.</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-2">Radarr Sync Interval (hours):</label>
-              <input type="number" name="radarrSyncIntervalHours" 
-                     value="<%= qualitySettings.radarrSyncIntervalHours || 6 %>"
-                     min="1"
-                     class="w-full border rounded px-2 py-1">
-              <p class="text-xs text-gray-500 mt-1">How often to sync all movies from Radarr</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-2">RSS Sync Interval (hours):</label>
-              <input type="number" name="rssSyncIntervalHours" 
-                     value="<%= qualitySettings.rssSyncIntervalHours || 1 %>"
-                     min="0.5"
-                     step="0.5"
-                     class="w-full border rounded px-2 py-1">
-              <p class="text-xs text-gray-500 mt-1">How often to sync RSS feeds</p>
             </div>
           </div>
         </div>
@@ -1119,10 +1169,7 @@
         dubbedPenalty: parseFloat(form.dubbedPenalty.value),
         sizeBonusEnabled: form.sizeBonusEnabled?.checked || false,
         minSizeIncreasePercentForUpgrade: parseFloat(form.minSizeIncreasePercentForUpgrade.value),
-        upgradeThreshold: parseFloat(form.upgradeThreshold.value),
-        pollIntervalMinutes: parseInt(form.pollIntervalMinutes.value, 10),
-        radarrSyncIntervalHours: parseFloat(form.radarrSyncIntervalHours.value) || 6,
-        rssSyncIntervalHours: parseFloat(form.rssSyncIntervalHours.value) || 1
+        upgradeThreshold: parseFloat(form.upgradeThreshold.value)
       };
 
       try {
@@ -1140,6 +1187,34 @@
         }
       } catch (error) {
         showToast('Error: ' + error.message, 'error');
+      }
+    }
+
+    async function saveAppSettings(event) {
+      event.preventDefault();
+      const form = event.target;
+      const settings = {
+        pollIntervalMinutes: parseInt(form.pollIntervalMinutes.value, 10),
+        radarrSyncIntervalHours: parseFloat(form.radarrSyncIntervalHours.value),
+        sonarrSyncIntervalHours: parseFloat(form.sonarrSyncIntervalHours.value),
+        rssSyncIntervalHours: parseFloat(form.rssSyncIntervalHours.value),
+      };
+
+      try {
+        const res = await fetch('/settings/app-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('App settings saved!', 'success');
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          showToast('Error: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('Error: ' + (error.message || 'Unknown error'), 'error');
       }
     }
 

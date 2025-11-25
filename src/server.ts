@@ -36,6 +36,7 @@ app.get('/logs', (req, res) => {
 
 // Scheduled sync jobs
 let radarrSyncInterval: NodeJS.Timeout | null = null;
+let sonarrSyncInterval: NodeJS.Timeout | null = null;
 let rssSyncInterval: NodeJS.Timeout | null = null;
 let matchingInterval: NodeJS.Timeout | null = null;
 
@@ -80,15 +81,16 @@ async function runFullSyncCycle() {
 }
 
 function startScheduledSyncs() {
-  const settings = settingsModel.getQualitySettings();
+  const appSettings = settingsModel.getAppSettings();
   
   // Clear existing intervals
   if (radarrSyncInterval) clearInterval(radarrSyncInterval);
+  if (sonarrSyncInterval) clearInterval(sonarrSyncInterval);
   if (rssSyncInterval) clearInterval(rssSyncInterval);
   if (matchingInterval) clearInterval(matchingInterval);
 
   // Radarr sync interval
-  const radarrIntervalMs = (settings.radarrSyncIntervalHours || 6) * 60 * 60 * 1000;
+  const radarrIntervalMs = (appSettings.radarrSyncIntervalHours || 6) * 60 * 60 * 1000;
   radarrSyncInterval = setInterval(async () => {
     console.log('Running scheduled Radarr sync...');
     try {
@@ -97,10 +99,22 @@ function startScheduledSyncs() {
       console.error('Scheduled Radarr sync error:', error);
     }
   }, radarrIntervalMs);
-  console.log(`Radarr sync scheduled every ${settings.radarrSyncIntervalHours || 6} hours`);
+  console.log(`Radarr sync scheduled every ${appSettings.radarrSyncIntervalHours || 6} hours`);
+
+  // Sonarr sync interval
+  const sonarrIntervalMs = (appSettings.sonarrSyncIntervalHours || 6) * 60 * 60 * 1000;
+  sonarrSyncInterval = setInterval(async () => {
+    console.log('Running scheduled Sonarr sync...');
+    try {
+      await syncSonarrShows();
+    } catch (error) {
+      console.error('Scheduled Sonarr sync error:', error);
+    }
+  }, sonarrIntervalMs);
+  console.log(`Sonarr sync scheduled every ${appSettings.sonarrSyncIntervalHours || 6} hours`);
 
   // RSS sync interval
-  const rssIntervalMs = (settings.rssSyncIntervalHours || 1) * 60 * 60 * 1000;
+  const rssIntervalMs = (appSettings.rssSyncIntervalHours || 1) * 60 * 60 * 1000;
   rssSyncInterval = setInterval(async () => {
     console.log('Running scheduled RSS sync...');
     try {
@@ -116,7 +130,7 @@ function startScheduledSyncs() {
       console.error('Scheduled RSS sync error:', error);
     }
   }, rssIntervalMs);
-  console.log(`RSS sync scheduled every ${settings.rssSyncIntervalHours || 1} hours`);
+  console.log(`RSS sync scheduled every ${appSettings.rssSyncIntervalHours || 1} hours`);
 
   // Matching engine runs after RSS sync, but also run it periodically
   // (it will use the latest synced data)

@@ -382,8 +382,12 @@ const defaultSettings = {
   sizeBonusEnabled: true,
   minSizeIncreasePercentForUpgrade: 10,
   upgradeThreshold: 20,
+};
+
+const defaultAppSettings = {
   pollIntervalMinutes: 60,
   radarrSyncIntervalHours: 6,
+  sonarrSyncIntervalHours: 6,
   rssSyncIntervalHours: 1,
 };
 
@@ -391,6 +395,13 @@ const existingSettings = db.prepare("SELECT value FROM app_settings WHERE key = 
 if (!existingSettings) {
   db.prepare("INSERT INTO app_settings (key, value) VALUES ('qualitySettings', ?)").run(
     JSON.stringify(defaultSettings)
+  );
+}
+
+const existingAppSettings = db.prepare("SELECT value FROM app_settings WHERE key = 'appSettings'").get();
+if (!existingAppSettings) {
+  db.prepare("INSERT INTO app_settings (key, value) VALUES ('appSettings', ?)").run(
+    JSON.stringify(defaultAppSettings)
   );
 }
 

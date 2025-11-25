@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { feedsModel } from '../models/feeds';
 import { settingsModel } from '../models/settings';
-import { QualitySettings } from '../types/QualitySettings';
+import { AppSettings, QualitySettings } from '../types/QualitySettings';
 import { backfillRadarrLinks } from '../tasks/backfillRadarr';
 
 const router = Router();
@@ -10,6 +10,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const feeds = feedsModel.getAll();
     const qualitySettings = settingsModel.getQualitySettings();
+    const appSettings = settingsModel.getAppSettings();
     const allSettings = settingsModel.getAll();
     
     console.log('=== Loading Settings Page ===');
@@ -35,6 +36,7 @@ router.get('/', async (req: Request, res: Response) => {
     res.render('settings', {
       feeds,
       qualitySettings,
+      appSettings,
       tmdbApiKey,
       omdbApiKey,
       braveApiKey,
@@ -151,6 +153,23 @@ router.post('/quality', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Update quality settings error:', error);
     res.status(500).json({ error: 'Failed to update quality settings' });
+  }
+});
+
+router.post('/app-settings', async (req: Request, res: Response) => {
+  try {
+    const payload: Partial<AppSettings> = req.body;
+    const appSettings: AppSettings = {
+      pollIntervalMinutes: Math.max(0, parseInt(String(payload.pollIntervalMinutes ?? 60), 10) || 0),
+      radarrSyncIntervalHours: Math.max(1, parseFloat(String(payload.radarrSyncIntervalHours ?? 6)) || 1),
+      sonarrSyncIntervalHours: Math.max(1, parseFloat(String(payload.sonarrSyncIntervalHours ?? 6)) || 1),
+      rssSyncIntervalHours: Math.max(0.25, parseFloat(String(payload.rssSyncIntervalHours ?? 1)) || 1),
+    };
+    settingsModel.setAppSettings(appSettings);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update app settings error:', error);
+    res.status(500).json({ error: 'Failed to update app settings' });
   }
 });
 

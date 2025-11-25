@@ -1205,6 +1205,31 @@
       }
     }
 
+    window.isSyncInProgress = false;
+
+    (function setupAutoRefresh() {
+      const refreshMinutes = Number(<%= appSettings && appSettings.pollIntervalMinutes ? appSettings.pollIntervalMinutes : 0 %>);
+      if (!refreshMinutes || refreshMinutes <= 0) return;
+      const intervalMs = refreshMinutes * 60 * 1000;
+      let refreshTimer;
+      const schedule = () => {
+        refreshTimer = setTimeout(() => {
+          if (document.hidden || window.isSyncInProgress) {
+            schedule();
+            return;
+          }
+          window.location.reload();
+        }, intervalMs);
+      };
+      schedule();
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          clearTimeout(refreshTimer);
+          schedule();
+        }
+      });
+    })();
+
     // Search functionality
     // Define and expose filterMovies to window immediately
     function filterMovies() {
@@ -1468,11 +1493,13 @@
               if (data && data.currentStep && data.currentStep.startsWith('Error:')) {
                 syncMatchBtn.disabled = false;
                 syncMatchBtnText.textContent = 'Sync & Match';
+                window.isSyncInProgress = false;
                 showError(data.currentStep.replace('Error: ', ''), false); // Don't auto-dismiss errors
               } else {
                 // Success
                 syncMatchBtn.disabled = false;
                 syncMatchBtnText.textContent = 'Sync & Match';
+                window.isSyncInProgress = false;
                 syncProgressError.classList.add('hidden');
                 
                 // Show completion message
@@ -1578,6 +1605,7 @@
         syncProgressDetails.classList.add('hidden');
         syncProgressBar.style.width = '0%';
         syncProgressText.textContent = 'Initializing sync...';
+        window.isSyncInProgress = true;
 
         // Start sync
         fetch('/build-match', { method: 'POST' })
@@ -1595,6 +1623,7 @@
             } else {
               syncMatchBtn.disabled = false;
               syncMatchBtnText.textContent = 'Sync & Match';
+              window.isSyncInProgress = false;
               showError(data.message || 'Failed to start sync. Please check your configuration and try again.', false);
             }
           })
@@ -1602,6 +1631,7 @@
             console.error('Error starting sync:', error);
             syncMatchBtn.disabled = false;
             syncMatchBtnText.textContent = 'Sync & Match';
+            window.isSyncInProgress = false;
             showError(`Failed to start sync: ${error.message}. Please check your network connection and try again.`, false);
           });
       });

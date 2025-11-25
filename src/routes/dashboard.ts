@@ -648,6 +648,7 @@ router.get('/movies', async (req: Request, res: Response) => {
     // Get last refresh time (matching engine last run)
     const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;
     const lastRefresh = lastRefreshResult?.value ? new Date(lastRefreshResult.value) : null;
+    const appSettings = settingsModel.getAppSettings();
     
     res.render('dashboard', {
       viewType: 'movies',
@@ -656,6 +657,7 @@ router.get('/movies', async (req: Request, res: Response) => {
       unmatchedItems,
       radarrBaseUrl,
       lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
+      appSettings,
     });
   } catch (error) {
     console.error('Movies Dashboard error:', error);
@@ -875,6 +877,7 @@ router.get('/tv', async (req: Request, res: Response) => {
     // Get last refresh time (matching engine last run)
     const lastRefreshResult = db.prepare("SELECT value FROM app_settings WHERE key = 'matching_last_run'").get() as { value: string } | undefined;
     const lastRefresh = lastRefreshResult?.value ? new Date(lastRefreshResult.value) : null;
+    const appSettings = settingsModel.getAppSettings();
     
     res.render('dashboard', {
       viewType: 'tv',
@@ -883,6 +886,7 @@ router.get('/tv', async (req: Request, res: Response) => {
       unmatchedItems,
       sonarrBaseUrl,
       lastRefresh: lastRefresh ? lastRefresh.toISOString() : null,
+      appSettings,
     });
   } catch (error) {
     console.error('TV Dashboard error:', error);

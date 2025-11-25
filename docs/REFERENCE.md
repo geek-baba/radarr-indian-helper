@@ -25,6 +25,7 @@
 ### Configuration Model
 - `PORT`, `DB_PATH`, and optional paths remain env-driven for the process.
 - All user-level settings (Radarr/Sonarr endpoints, API keys, feed definitions, quality weights, sync cadences) persist in SQLite via the Settings UI. Service clients read from `app_settings` on each call (`settingsModel` + per-client cache refresh).
+- The new “App Settings” tab groups sync cadences (Radarr/Sonarr/RSS) and dashboard auto-refresh; set the refresh interval to `0` to disable periodic reloads.
 
 ### UI & Routes Overview
 - `/movies`: Tabbed dashboard (New, Existing, Unmatched) with Sync & Match control.
