@@ -92,9 +92,16 @@ router.get('/', async (req: Request, res: Response) => {
 // Movies Dashboard route
 router.get('/movies', async (req: Request, res: Response) => {
   try {
-    // Get all releases (dashboard now uses only synced data, no real-time API calls)
-    const allReleases = releasesModel.getAll();
-    const feeds = feedsModel.getAll();
+    // Get all releases from movie feeds only (dashboard now uses only synced data, no real-time API calls)
+    // Filter to only include releases from feeds with feed_type = 'movie'
+    const allReleases = db.prepare(`
+      SELECT r.* FROM movie_releases r
+      INNER JOIN rss_feed_items rss ON r.guid = rss.guid
+      INNER JOIN rss_feeds f ON rss.feed_id = f.id
+      WHERE f.feed_type = 'movie'
+      ORDER BY r.published_at DESC
+    `).all() as any[];
+    const feeds = feedsModel.getAll().filter(f => f.feed_type === 'movie');
     
     // Get feed names for display
     const feedMap: { [key: number]: string } = {};
