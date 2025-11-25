@@ -826,13 +826,17 @@ router.post('/rss/override-tvdb/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'TVDB ID not found' });
     }
 
-    // Try to get TMDB and IMDB IDs from TVDB extended info
+    // Try to get TMDB and IMDB IDs from TVDB extended info, and also fetch the slug
     let tmdbId = item.tmdb_id;
     let imdbId = item.imdb_id;
+    let tvdbSlug: string | null = null;
     
     try {
       const tvdbExtended = await tvdbClient.getSeriesExtended(parseInt(tvdbId, 10));
       if (tvdbExtended) {
+        // Extract slug from extended info
+        tvdbSlug = (tvdbExtended as any).slug || (tvdbExtended as any).nameSlug || (tvdbExtended as any).name_slug || null;
+        
         // TVDB v4 structure - check for remoteIds
         const remoteIds = (tvdbExtended as any).remoteIds || [];
         const tmdbRemote = remoteIds.find((r: any) => r.source === 'tmdb' || r.source === 'themoviedb');
@@ -856,14 +860,46 @@ router.post('/rss/override-tvdb/:id', async (req: Request, res: Response) => {
       WHERE id = ?
     `).run(parseInt(tvdbId, 10), tmdbId || null, imdbId || null, itemId);
 
-    // Also update tv_releases if it exists
+    // Update tv_releases - update the specific release by guid, and also update all releases with the same TVDB ID
+    // This ensures consistency across all releases for the same show
     const tvRelease = db.prepare('SELECT * FROM tv_releases WHERE guid = ?').get(item.guid) as any;
     if (tvRelease) {
+      // Update the specific release by guid
       db.prepare(`
         UPDATE tv_releases 
-        SET tvdb_id = ?, tmdb_id = ?, imdb_id = ?, last_checked_at = datetime('now')
+        SET tvdb_id = ?, tvdb_slug = ?, tmdb_id = ?, imdb_id = ?, last_checked_at = datetime('now')
         WHERE guid = ?
-      `).run(parseInt(tvdbId, 10), tmdbId || null, imdbId || null, item.guid);
+      `).run(parseInt(tvdbId, 10), tvdbSlug, tmdbId || null, imdbId || null, item.guid);
+      
+      // Also update all other releases with the same TVDB ID to have the same slug
+      // This ensures the dashboard shows the correct URL for all releases of the same show
+      if (tvdbSlug) {
+        const updateCount = db.prepare(`
+          UPDATE tv_releases 
+          SET tvdb_slug = ?
+          WHERE tvdb_id = ? AND (tvdb_slug IS NULL OR tvdb_slug = '')
+        `).run(tvdbSlug, parseInt(tvdbId, 10)).changes || 0;
+        
+        if (updateCount > 0) {
+          console.log(`Updated ${updateCount} additional tv_release(s) with slug: ${tvdbSlug}`);
+        }
+      }
+      
+      console.log(`Updated tv_release with TVDB ID ${tvdbId} and slug: ${tvdbSlug || 'none'}`);
+    } else {
+      // If tv_release doesn't exist yet, update any existing releases with this TVDB ID
+      if (tvdbSlug) {
+        const updateCount = db.prepare(`
+          UPDATE tv_releases 
+          SET tvdb_slug = ?
+          WHERE tvdb_id = ? AND (tvdb_slug IS NULL OR tvdb_slug = '')
+        `).run(tvdbSlug, parseInt(tvdbId, 10)).changes || 0;
+        
+        if (updateCount > 0) {
+          console.log(`Updated ${updateCount} tv_release(s) with slug: ${tvdbSlug}`);
+        }
+      }
+      console.log(`No tv_release found for guid ${item.guid}, slug will be set when release is processed`);
     }
 
     const seriesName = (tvdbSeries as any).name || (tvdbSeries as any).title || 'Unknown Series';
