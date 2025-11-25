@@ -19,6 +19,32 @@ import { runTvMatchingEngine } from '../services/tvMatchingEngine';
 
 const router = Router();
 
+/**
+ * Generate TVDB URL from TVDB ID and show name
+ * TVDB v4 uses slug-based URLs: https://thetvdb.com/series/{slug}
+ * Falls back to numeric ID if slug cannot be generated
+ */
+function getTvdbUrl(tvdbId: number | undefined | null, showName?: string): string | null {
+  if (!tvdbId) {
+    return null;
+  }
+  
+  // Try to create slug from show name if available
+  if (showName) {
+    const slug = showName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    
+    if (slug) {
+      return `https://thetvdb.com/series/${slug}`;
+    }
+  }
+  
+  // Fallback to numeric ID format (may not work for all series)
+  return `https://thetvdb.com/series/${tvdbId}`;
+}
+
 // Releases page - flattened list of all releases with TMDB metadata
 router.get('/releases', (req: Request, res: Response) => {
   try {
@@ -347,8 +373,14 @@ router.get('/sonarr', (req: Request, res: Response) => {
     
     const totalPages = Math.ceil(total / 50);
     
+    // Enrich shows with TVDB URLs
+    const showsWithUrls = shows.map((show: any) => ({
+      ...show,
+      tvdb_url: getTvdbUrl(show.tvdb_id, show.title),
+    }));
+    
     res.render('sonarr-data', {
-      shows,
+      shows: showsWithUrls,
       lastSync,
       totalShows,
       monitoredShows,
@@ -473,10 +505,23 @@ router.get('/rss', (req: Request, res: Response) => {
     // Convert lastSync to ISO string for header display
     const lastRefresh = lastSync ? (typeof lastSync === 'string' ? lastSync : lastSync.toISOString()) : null;
     
+    // Enrich items with TVDB URLs (for TV shows)
+    const itemsWithUrls = items.map((item: any) => {
+      if (item.feed_type === 'tv' && item.tvdb_id) {
+        // Try to get show name from title or normalized_title
+        const showName = item.title || item.normalized_title || '';
+        return {
+          ...item,
+          tvdb_url: getTvdbUrl(item.tvdb_id, showName),
+        };
+      }
+      return item;
+    });
+    
     res.render('rss-data', {
       feeds,
       itemsByFeed,
-      items,
+      items: itemsWithUrls,
       selectedFeedId: feedId,
       selectedFeedType: feedType,
       lastSync,

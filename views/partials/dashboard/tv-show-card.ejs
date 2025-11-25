@@ -88,9 +88,9 @@
         </span>
 
         <!-- TVDB Link -->
-        <% if (show.tvdbId) { %>
+        <% if (show.tvdbId && show.tvdbUrl) { %>
           <a 
-            href="https://www.thetvdb.com/series/<%= show.tvdbId %>" 
+            href="<%= show.tvdbUrl %>" 
             target="_blank" 
             rel="noreferrer" 
             class="icon-btn inline-flex items-center justify-center" 

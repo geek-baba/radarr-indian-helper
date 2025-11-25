@@ -78,10 +78,12 @@
                 <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100"><%= show.title %></td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400"><%= show.year || '-' %></td>
                 <td class="px-4 py-3 text-sm text-gray-600">
-                  <% if (show.tvdb_id) { %>
-                    <a href="https://www.thetvdb.com/series/<%= show.tvdb_id %>" target="_blank" class="text-blue-600 hover:underline">
+                  <% if (show.tvdb_id && show.tvdb_url) { %>
+                    <a href="<%= show.tvdb_url %>" target="_blank" class="text-blue-600 hover:underline">
                       <%= show.tvdb_id %>
                     </a>
+                  <% } else if (show.tvdb_id) { %>
+                    <%= show.tvdb_id %>
                   <% } else { %>
                     -
                   <% } %>

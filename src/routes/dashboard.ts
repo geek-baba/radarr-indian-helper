@@ -24,6 +24,32 @@ function sanitizeTitle(value: string): string {
 }
 
 /**
+ * Generate TVDB URL from TVDB ID and show name
+ * TVDB v4 uses slug-based URLs: https://thetvdb.com/series/{slug}
+ * Falls back to numeric ID if slug cannot be generated
+ */
+function getTvdbUrl(tvdbId: number | undefined, showName?: string): string {
+  if (!tvdbId) {
+    return '#';
+  }
+  
+  // Try to create slug from show name if available
+  if (showName) {
+    const slug = showName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    
+    if (slug) {
+      return `https://thetvdb.com/series/${slug}`;
+    }
+  }
+  
+  // Fallback to numeric ID format (may not work for all series)
+  return `https://thetvdb.com/series/${tvdbId}`;
+}
+
+/**
  * Extract a clean movie name + year from a normalized title by removing quality information.
  * This is used for matching releases that represent the same movie but with different quality.
  * 
@@ -722,6 +748,7 @@ router.get('/tv', async (req: Request, res: Response) => {
       showKey: string;
       showName: string;
       tvdbId?: number;
+      tvdbUrl?: string;  // TVDB URL for linking
       tmdbId?: number;
       imdbId?: string;
       sonarrSeriesId?: number;
@@ -766,10 +793,15 @@ router.get('/tv', async (req: Request, res: Response) => {
       const manuallyIgnored = allShowReleases.length > 0 && allShowReleases.every((release: any) => release.manually_ignored);
       const ignoreReleaseId = allShowReleases[0]?.id || null;
 
+      // Generate TVDB URL using slug format
+      const tvdbId = primaryRelease.tvdb_id;
+      const tvdbUrl = getTvdbUrl(tvdbId, showName);
+
       showGroups.push({
         showKey,
         showName,
-        tvdbId: primaryRelease.tvdb_id,
+        tvdbId,
+        tvdbUrl,
         tmdbId: primaryRelease.tmdb_id,
         imdbId: primaryRelease.imdb_id,
         sonarrSeriesId: primaryRelease.sonarr_series_id,
