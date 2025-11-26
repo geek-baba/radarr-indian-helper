@@ -79,9 +79,10 @@
   // Connect global search based on current page
   if (search) {
     const path = window.location.pathname;
+    const isDashboardView = path === '/' || path === '/dashboard' || path === '/tv';
     
-    // Dashboard page - filter movies client-side
-    if (path === '/' || path === '/dashboard') {
+    // Dashboard page (movies or TV) - filter client-side
+    if (isDashboardView) {
       // Use event delegation and direct function call
       function setupDashboardSearch() {
         const globalSearch = document.getElementById('globalSearch');
