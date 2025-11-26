@@ -79,7 +79,7 @@
   // Connect global search based on current page
   if (search) {
     const path = window.location.pathname;
-    const isDashboardView = path === '/' || path === '/dashboard' || path === '/tv';
+    const isDashboardView = path === '/' || path.startsWith('/dashboard') || path === '/tv';
     
     // Dashboard page (movies or TV) - filter client-side
     if (isDashboardView) {

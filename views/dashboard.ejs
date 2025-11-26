@@ -1308,9 +1308,9 @@
         section.style.display = 'block';
       });
       
-      // Get all movie card containers
-      const movieCards = document.querySelectorAll('article.card[data-movie-id]');
-      const tvCards = document.querySelectorAll('article.card[data-show-id]');
+      // Get all card containers (movies and TV)
+      const movieCards = document.querySelectorAll('section[data-type="movies"] article.card[data-movie-id]');
+      const tvCards = document.querySelectorAll('section[data-type="tv"] article.card[data-show-id], article.card[data-show-id]');
       let visibleCount = 0;
       
       movieCards.forEach(card => {
