@@ -80,6 +80,18 @@
       <div class="mb-6">
         <nav class="flex gap-2 items-center" aria-label="View Type">
           <a 
+            href="/dashboard"
+            class="<%= currentViewType === 'combined' 
+              ? 'bg-blue-600 text-white shadow-md' 
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' %> 
+              px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+            </svg>
+            <span>Combined</span>
+          </a>
+          <a 
             href="/movies"
             class="<%= currentViewType === 'movies' 
               ? 'bg-blue-600 text-white shadow-md' 
@@ -106,7 +118,215 @@
         </nav>
       </div>
 
-      <% if (currentViewType === 'movies') { %>
+      <% if (currentViewType === 'combined') { %>
+        <% 
+          // Combined view: merge movies and TV shows into unified list
+          // Helper to get latest date from a group
+          function getLatestDateCombined(group) {
+            let allReleases = [];
+            if (group.add) {
+              allReleases = [...(group.add || []), ...(group.existing || []), ...(group.upgrade || [])];
+            } else {
+              allReleases = [...(group.newShows || []), ...(group.existingShows || []), ...(group.unmatched || [])];
+            }
+            if (allReleases.length === 0) return 0;
+            const dates = allReleases.map(r => new Date(r.published_at).getTime());
+            return Math.max(...dates);
+          }
+          
+          // Helper to categorize by time period
+          function categorizeByTimePeriod(dateMs) {
+            const now = Date.now();
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (dateMs >= today.getTime()) return 'today';
+            if (dateMs >= yesterday.getTime()) return 'yesterday';
+            return 'older';
+          }
+          
+          // Combine all movie groups and TV show groups
+          const allCombinedItems = [];
+          
+          // Add movies
+          if (newMoviesByPeriod) {
+            ['today', 'yesterday', 'older'].forEach(period => {
+              if (newMoviesByPeriod[period]) {
+                newMoviesByPeriod[period].forEach(movie => {
+                  allCombinedItems.push({ type: 'movie', group: movie, period: categorizeByTimePeriod(getLatestDateCombined(movie)) });
+                });
+              }
+            });
+          }
+          if (existingMoviesByPeriod) {
+            ['today', 'yesterday', 'older'].forEach(period => {
+              if (existingMoviesByPeriod[period]) {
+                existingMoviesByPeriod[period].forEach(movie => {
+                  allCombinedItems.push({ type: 'movie', group: movie, period: categorizeByTimePeriod(getLatestDateCombined(movie)) });
+                });
+              }
+            });
+          }
+          if (unmatchedItems) {
+            unmatchedItems.forEach(movie => {
+              allCombinedItems.push({ type: 'movie', group: movie, period: 'older' });
+            });
+          }
+          
+          // Add TV shows
+          if (newTvShowsByPeriod) {
+            ['today', 'yesterday', 'older'].forEach(period => {
+              if (newTvShowsByPeriod[period]) {
+                newTvShowsByPeriod[period].forEach(show => {
+                  allCombinedItems.push({ type: 'tv', group: show, period: categorizeByTimePeriod(getLatestDateCombined(show)) });
+                });
+              }
+            });
+          }
+          if (existingTvShowsByPeriod) {
+            ['today', 'yesterday', 'older'].forEach(period => {
+              if (existingTvShowsByPeriod[period]) {
+                existingTvShowsByPeriod[period].forEach(show => {
+                  allCombinedItems.push({ type: 'tv', group: show, period: categorizeByTimePeriod(getLatestDateCombined(show)) });
+                });
+              }
+            });
+          }
+          if (unmatchedItemsTv) {
+            unmatchedItemsTv.forEach(show => {
+              allCombinedItems.push({ type: 'tv', group: show, period: 'older' });
+            });
+          }
+          
+          // Group by time period
+          const combinedByPeriod = {
+            today: [],
+            yesterday: [],
+            older: []
+          };
+          
+          allCombinedItems.forEach(item => {
+            combinedByPeriod[item.period].push(item);
+          });
+          
+          // Sort each period by date (newest first)
+          ['today', 'yesterday', 'older'].forEach(period => {
+            combinedByPeriod[period].sort((a, b) => {
+              const dateA = getLatestDateCombined(a.group);
+              const dateB = getLatestDateCombined(b.group);
+              return dateB - dateA;
+            });
+          });
+          
+          const hasCombined = combinedByPeriod.today.length > 0 || combinedByPeriod.yesterday.length > 0 || combinedByPeriod.older.length > 0;
+        %>
+        
+        <% if (!hasCombined) { %>
+          <p class="text-gray-600 dark:text-gray-400">No releases found. Go to Settings to add RSS feeds and sync data.</p>
+        <% } else { %>
+          <!-- Sync & Match Button -->
+          <div class="mb-6 flex justify-end">
+            <button 
+              id="syncMatchBtn" 
+              class="px-4 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              type="button"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              <span id="syncMatchBtnText">Sync & Match</span>
+            </button>
+          </div>
+          
+          <!-- Progress Container -->
+          <div id="syncProgressContainer" class="hidden mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex-1">
+                <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
+                  <div id="syncProgressBar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div id="syncProgressText" class="text-sm text-gray-700 dark:text-gray-300 font-medium"></div>
+                <div id="syncProgressDetails" class="hidden mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
+                <div id="syncProgressError" class="hidden mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-red-800 dark:text-red-300 mb-1">Error</div>
+                      <div id="syncProgressErrorText" class="text-sm text-red-700 dark:text-red-400"></div>
+                    </div>
+                    <button 
+                      id="dismissErrorBtn"
+                      onclick="dismissSyncError()"
+                      class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 flex-shrink-0"
+                      aria-label="Dismiss error"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Time Period Tabs -->
+          <div class="mb-4">
+            <nav class="flex gap-2" aria-label="Time Periods">
+              <% const combinedPeriods = [
+                { key: 'today', label: 'Today', count: combinedByPeriod.today.length },
+                { key: 'yesterday', label: 'Yesterday', count: combinedByPeriod.yesterday.length },
+                { key: 'older', label: 'Older', count: combinedByPeriod.older.length }
+              ]; %>
+              <% 
+                let firstCombinedIndex = -1;
+                combinedPeriods.forEach((period, index) => {
+                  if (period.count > 0 && firstCombinedIndex === -1) {
+                    firstCombinedIndex = index;
+                  }
+                });
+              %>
+              <% combinedPeriods.forEach((period, index) => { %>
+                <% if (period.count > 0) { %>
+                  <button 
+                    onclick="showCombinedPeriod('<%= period.key %>')" 
+                    id="combined-tab-<%= period.key %>"
+                    class="<%= index === firstCombinedIndex 
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-2 border-blue-300 dark:border-blue-700' 
+                      : 'bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 border-2 border-transparent hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-200 dark:hover:border-gray-600' %> 
+                      px-3 py-1.5 rounded-md font-medium text-xs transition-all duration-200 flex items-center gap-1.5"
+                  >
+                    <span><%= period.label %></span>
+                    <span class="<%= index === firstCombinedIndex 
+                      ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200' 
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400' %> 
+                      px-1.5 py-0.5 rounded-full text-xs font-semibold min-w-[1.5rem] text-center">
+                      <%= period.count %>
+                    </span>
+                  </button>
+                <% } %>
+              <% }); %>
+            </nav>
+          </div>
+          
+          <!-- Combined List by Time Period -->
+          <% combinedPeriods.forEach((period, index) => { %>
+            <% if (combinedByPeriod[period.key] && combinedByPeriod[period.key].length > 0) { %>
+              <div id="combined-period-<%= period.key %>" class="combined-section <%= index === firstCombinedIndex ? '' : 'hidden' %>">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <% combinedByPeriod[period.key].forEach(item => { %>
+                    <% if (item.type === 'movie') { %>
+                      <%- include('partials/dashboard/movie-card', { movie: item.group, radarrBaseUrl }) %>
+                    <% } else { %>
+                      <%- include('partials/dashboard/tv-show-card', { show: item.group, sonarrBaseUrl }) %>
+                    <% } %>
+                  <% }); %>
+                </div>
+              </div>
+            <% } %>
+          <% }); %>
+        <% } %>
+      <% } else if (currentViewType === 'movies') { %>
       <% if (!hasNewMovies && !hasExistingMovies && !hasUnmatched) { %>
           <p class="text-gray-600 dark:text-gray-400">No movie releases found. Go to Settings to add RSS feeds and sync data.</p>
       <% } else { %>
@@ -816,6 +1036,35 @@
       }
     }
 
+    // Combined view tab switching
+    function showCombinedPeriod(period) {
+      document.querySelectorAll('.combined-section').forEach(section => {
+        section.classList.add('hidden');
+      });
+      document.getElementById(`combined-period-${period}`).classList.remove('hidden');
+      
+      document.querySelectorAll('[id^="combined-tab-"]').forEach(tab => {
+        tab.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300', 'border-2', 'border-blue-300', 'dark:border-blue-700');
+        tab.classList.add('bg-gray-50', 'dark:bg-gray-800/50', 'text-gray-600', 'dark:text-gray-400', 'border-transparent');
+        
+        const badge = tab.querySelector('span:last-child');
+        if (badge) {
+          badge.classList.remove('bg-blue-200', 'dark:bg-blue-800', 'text-blue-800', 'dark:text-blue-200');
+          badge.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-400');
+        }
+      });
+      
+      const activeTab = document.getElementById(`combined-tab-${period}`);
+      activeTab.classList.remove('bg-gray-50', 'dark:bg-gray-800/50', 'text-gray-600', 'dark:text-gray-400', 'border-transparent');
+      activeTab.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-700', 'dark:text-blue-300', 'border-2', 'border-blue-300', 'dark:border-blue-700');
+      
+      const activeBadge = activeTab.querySelector('span:last-child');
+      if (activeBadge) {
+        activeBadge.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-600', 'dark:text-gray-400');
+        activeBadge.classList.add('bg-blue-200', 'dark:bg-blue-800', 'text-blue-800', 'dark:text-blue-200');
+      }
+    }
+
     // Legacy functions for backward compatibility (can be removed later)
     function showNewShowsPeriod(period) {
       document.querySelectorAll('.new-shows-section').forEach(section => {
@@ -1294,6 +1543,11 @@
           section.classList.remove('hidden');
           section.style.display = '';
         });
+        // Also restore combined sections
+        document.querySelectorAll('.combined-section').forEach(section => {
+          section.classList.remove('hidden');
+          section.style.display = '';
+        });
         return;
       }
       
@@ -1304,6 +1558,11 @@
         section.style.display = 'block';
       });
       document.querySelectorAll('.new-movies-section, .existing-movies-section').forEach(section => {
+        section.classList.remove('hidden');
+        section.style.display = 'block';
+      });
+      // Also show combined sections for combined view
+      document.querySelectorAll('.combined-section').forEach(section => {
         section.classList.remove('hidden');
         section.style.display = 'block';
       });
@@ -1400,7 +1659,7 @@
       if (globalSearch) globalSearch.value = '';
       if (searchResultsCount) searchResultsCount.classList.add('hidden');
       if (clearSearchBtn) {
-        clearSearchBtn.classList.add('hidden');
+      clearSearchBtn.classList.add('hidden');
         clearSearchBtn.style.display = 'none';
       }
       
