@@ -96,9 +96,9 @@
     search.addEventListener('keyup', genericDashboardFilterHandler);
     search.addEventListener('change', genericDashboardFilterHandler);
 
-    // Radarr Data page - URL-based search
-    if (path === '/data/releases') {
-      // All Releases page - URL-based search with debouncing
+    // URL-based search pages
+    if (path === '/data/releases' || path === '/data/tv-releases') {
+      // All Releases & TV Releases pages - URL-based search with debouncing
       let searchTimeout = null;
       
       // Show/hide clear button based on search value
@@ -116,7 +116,7 @@
       // Initial check for clear button
       updateClearButton();
       
-      search.addEventListener('input', (e) => {
+      search.addEventListener('input', () => {
         updateClearButton();
         
         // Clear existing timeout
@@ -158,8 +158,17 @@
           window.location.href = url.toString();
         }
       });
+
+      // Clear button support (used by header)
+      window.clearGlobalSearch = function() {
+        search.value = '';
+        updateClearButton();
+        const url = new URL(window.location.href);
+        url.searchParams.delete('search');
+        window.location.href = url.toString();
+      };
     }
-    else if (path === '/data/radarr') {
+    else if (path === '/data/radarr' || path === '/data/sonarr') {
     let searchTimeout = null;
     
     // Show/hide clear button based on search value

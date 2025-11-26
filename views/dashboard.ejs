@@ -1309,8 +1309,9 @@
       });
       
       // Get all card containers (movies and TV)
-      const movieCards = document.querySelectorAll('section[data-type="movies"] article.card[data-movie-id]');
-      const tvCards = document.querySelectorAll('section[data-type="tv"] article.card[data-show-id], article.card[data-show-id]');
+      // Note: movie and TV cards are rendered without section wrappers, so select all cards by data attributes
+      const movieCards = document.querySelectorAll('article.card[data-movie-id]');
+      const tvCards = document.querySelectorAll('article.card[data-show-id]');
       let visibleCount = 0;
       
       movieCards.forEach(card => {
