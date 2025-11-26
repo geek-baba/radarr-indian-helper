@@ -1429,6 +1429,9 @@
         showMainSection(sectionKey);
       }
     }
+
+    // Expose dashboard clear function under the global name used in the header
+    window.clearGlobalSearch = clearSearch;
     
     function handleSearchKeydown(event) {
       // Clear search on Escape key
