@@ -7,9 +7,9 @@
 - Structured logs, sync progress polling, and Settings UI live in SQLite (`app_settings`, `structured_logs`, etc.).
 
 ### Branch & Version Strategy
-- `main`: Stable movie-only release; last tagged `v1.0.0` (Docker: `ghcr.io/geek-baba/desiarr:1.0.0` and `:latest` until v2 ships).
-- `tv-integration`: Active development for TV features (Phases 1‑5). Will merge to `main` when TV flows are prod ready, then tag `v2.0.0` and retag `latest`.
-- Feature hotfixes should branch from the appropriate base (`main` for movie-only issues, `tv-integration` for ongoing TV work), then PR into the same.
+- `main`: Staging branch with both movie + TV pipelines; tagged `v2.0.0` (Docker: `ghcr.io/geek-baba/desiarr:2.0.0` and `:latest`).
+- `tv-integration`: Historical development branch for TV features (now merged); keep future enhancements on short-lived feature/fix branches.
+- Feature hotfixes should branch from the appropriate base (`main` for production issues, feature branches for ongoing work), then PR into `main`.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `refactor:`, etc.) to keep CI automation predictable.
 
 ### Deployment Workflow
