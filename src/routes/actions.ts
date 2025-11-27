@@ -66,6 +66,29 @@ router.post('/:id/add', async (req: Request, res: Response) => {
       });
     }
 
+    // First, check if movie already exists in Radarr by TMDB ID
+    const existingMovies = await radarrClient.getAllMovies();
+    const existingMovie = existingMovies.find(m => m.tmdbId === release.tmdb_id);
+    
+    if (existingMovie) {
+      // Movie already exists in Radarr - just update our database
+      console.log(`Movie with TMDB ID ${release.tmdb_id} already exists in Radarr with ID ${existingMovie.id}`);
+      const updatedRelease: Omit<Release, 'id'> = {
+        ...release,
+        radarr_movie_id: existingMovie.id,
+        radarr_movie_title: existingMovie.title,
+        status: 'ADDED',
+      };
+      releasesModel.upsert(updatedRelease);
+
+      return res.json({ 
+        success: true, 
+        message: `Movie "${existingMovie.title}" already exists in Radarr. Database updated.`,
+        radarrMovieId: existingMovie.id,
+      });
+    }
+
+
     // Lookup movie by TMDB ID (required for Radarr)
     let movie = await radarrClient.lookupMovieByTmdbId(release.tmdb_id);
     
@@ -83,7 +106,75 @@ router.post('/:id/add', async (req: Request, res: Response) => {
     }
 
     // Add to Radarr with selected options
-    const addedMovie = await radarrClient.addMovie(movie, parseInt(qualityProfileId, 10), rootFolderPath);
+    let addedMovie: any;
+    try {
+      addedMovie = await radarrClient.addMovie(movie, parseInt(qualityProfileId, 10), rootFolderPath);
+    } catch (error: any) {
+      // If we get a "path already exists" error, find which movie is using that path
+      const errorMessage = error?.response?.data?.message || error?.message || '';
+      const errorData = error?.response?.data;
+      
+      if (errorMessage.includes('already configured') || errorMessage.includes('already exists') || 
+          (errorData && Array.isArray(errorData) && errorData.some((e: any) => e.errorCode === 'MoviePathValidator'))) {
+        console.log(`Movie add failed with "path already exists" error, finding conflicting movie...`);
+        
+        // Extract the path from the error if available
+        let conflictingPath = rootFolderPath;
+        if (errorData && Array.isArray(errorData)) {
+          const pathError = errorData.find((e: any) => e.errorCode === 'MoviePathValidator');
+          if (pathError && pathError.attemptedValue) {
+            conflictingPath = pathError.attemptedValue;
+          }
+        }
+        
+        // Find which movie is using this path
+        const existingMoviesRetry = await radarrClient.getAllMovies();
+        const conflictingMovie = existingMoviesRetry.find(m => {
+          const moviePath = m.path || '';
+          return moviePath === conflictingPath || 
+                 moviePath.startsWith(conflictingPath) || 
+                 conflictingPath.startsWith(moviePath);
+        });
+        
+        if (conflictingMovie) {
+          // If it's the same movie (by TMDB ID), just update our database
+          if (conflictingMovie.tmdbId === release.tmdb_id) {
+            const updatedRelease: Omit<Release, 'id'> = {
+              ...release,
+              radarr_movie_id: conflictingMovie.id,
+              radarr_movie_title: conflictingMovie.title,
+              status: 'ADDED',
+            };
+            releasesModel.upsert(updatedRelease);
+
+            return res.json({ 
+              success: true, 
+              message: `Movie "${conflictingMovie.title}" already exists in Radarr. Database updated.`,
+              radarrMovieId: conflictingMovie.id,
+            });
+          } else {
+            // Different movie is using the path
+            return res.status(400).json({ 
+              error: `Path conflict: The path "${conflictingPath}" is already used by another movie: "${conflictingMovie.title}" (TMDB ID: ${conflictingMovie.tmdbId}). Please choose a different root folder or remove the conflicting movie from Radarr.`,
+              conflictingMovie: {
+                id: conflictingMovie.id,
+                title: conflictingMovie.title,
+                tmdbId: conflictingMovie.tmdbId,
+                path: conflictingMovie.path,
+              }
+            });
+          }
+        } else {
+          // Path conflict but couldn't find the movie - provide generic error
+          return res.status(400).json({ 
+            error: `Path conflict: The path "${conflictingPath}" is already configured for another movie in Radarr. Please choose a different root folder or check Radarr for duplicate movies.`,
+            details: errorData
+          });
+        }
+      }
+      // Re-throw if we can't handle it
+      throw error;
+    }
 
     // Update release with Radarr movie ID
     const updatedRelease: Omit<Release, 'id'> = {
